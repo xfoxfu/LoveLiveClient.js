@@ -37,7 +37,8 @@ describe("Client", () => {
           "bundle-version": "3.2",
           "os-version": "A0001 oneplus MSM8974 6.0.1",
           "platform-type": "2",
-          authorize: `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=a` },
+          authorize: `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=a`
+        },
         json: true
       };
       expect(client.buildUpRequestOpt("module", "api", "a")).to.eql(should_result);
@@ -61,7 +62,9 @@ describe("Client", () => {
           "bundle-version": "3.2",
           "os-version": "A0001 oneplus MSM8974 6.0.1",
           "platform-type": "2",
-          authorize: `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=1&token=token` },
+          authorize: `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=1&token=token`,
+          "x-message-code": "9ad6b39d5806e8ebb971e1dc5d723bcfa0ec9394"
+        },
         json: true,
         formData: { request_data: `{"test":true}` }
       };

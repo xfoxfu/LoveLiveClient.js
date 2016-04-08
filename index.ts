@@ -7,6 +7,7 @@ import * as Request from "request";
 const utils = require("utility");
 
 export = class {
+  // basic functions
   calculateHash(data: string | Object): string {
     let plainText: string;
     if (typeof data === "string") {
@@ -29,6 +30,7 @@ export = class {
     }
     if (data) {
       result.formData = { request_data: JSON.stringify(data) };
+      result.headers["x-message-code"] = this.calculateHash(data);
     }
     return result;
   }
