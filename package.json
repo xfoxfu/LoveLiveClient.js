@@ -10,7 +10,6 @@
     "pretest": "make compile"
   },
   "dependencies": {
-    "bluebird": "^3.3.4",
     "request-promise": "^2.0.1",
     "typescript": "^1.8.9",
     "typings": "^0.7.12",
