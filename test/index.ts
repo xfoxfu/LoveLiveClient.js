@@ -4,22 +4,19 @@ import chai = require("chai");
 const expect = chai.expect;
 const utils = require("utility");
 
-// client
+// Client
 import Client = require("../");
 describe("Client", () => {
   describe("#calculateHash", () => {
     it(`(data: string)`, () => {
-      let client = new Client();
-      expect(client.calculateHash("{}")).to.eql("f8420b09e5ae0bc09f36f8c928dfaccf3b91d6ab");
+      expect(Client.calculateHash("{}")).to.eql("f8420b09e5ae0bc09f36f8c928dfaccf3b91d6ab");
     });
     it(`(data: object)`, () => {
-      let client = new Client();
-      expect(client.calculateHash({})).to.eql("f8420b09e5ae0bc09f36f8c928dfaccf3b91d6ab");
+      expect(Client.calculateHash({})).to.eql("f8420b09e5ae0bc09f36f8c928dfaccf3b91d6ab");
     });
   });
   describe("#buildUpRequestOpt", () => {
     it("(method, api, nonce)", () => {
-      let client = new Client();
       let should_result = {
         uri: "http://prod-jp.lovelive.ge.klabgames.net/main.php/module/api",
         method: "POST",
@@ -28,7 +25,7 @@ describe("Client", () => {
           accept: "*/*",
           "time-zone": "JST",
           "api-model": "straightforward",
-          "client-version": "17.6",
+          "Client-version": "17.6",
           host: "prod-jp.lovelive.ge.klabgames.net",
           os: "Android",
           "accept-encoding": "gzip,deflate",
@@ -41,10 +38,9 @@ describe("Client", () => {
         },
         json: true
       };
-      expect(client.buildUpRequestOpt("module", "api", "a")).to.eql(should_result);
+      expect(Client.buildUpRequestOpt("module", "api", "a")).to.eql(should_result);
     });
     it("(method, api, nonce, data, token)", () => {
-      let client = new Client();
       let should_result = {
         uri: "http://prod-jp.lovelive.ge.klabgames.net/main.php/module/api",
         method: "POST",
@@ -53,7 +49,7 @@ describe("Client", () => {
           accept: "*/*",
           "time-zone": "JST",
           "api-model": "straightforward",
-          "client-version": "17.6",
+          "Client-version": "17.6",
           host: "prod-jp.lovelive.ge.klabgames.net",
           os: "Android",
           "accept-encoding": "gzip,deflate",
@@ -68,7 +64,7 @@ describe("Client", () => {
         json: true,
         formData: { request_data: `{"test":true}` }
       };
-      expect(client.buildUpRequestOpt("module", "api", "1", { test: true }, "token")).to.eql(should_result);
+      expect(Client.buildUpRequestOpt("module", "api", "1", { test: true }, "token")).to.eql(should_result);
     });
   });
 });

@@ -8,7 +8,7 @@ const utils = require("utility");
 
 export = class {
   // basic functions
-  calculateHash(data: string | Object): string {
+  static calculateHash(data: string | Object): string {
     let plainText: string;
     if (typeof data === "string") {
       plainText = data;
@@ -17,7 +17,7 @@ export = class {
     }
     return crypto.createHmac("sha1", config.hmac_key).update(plainText).digest().toString("hex");
   }
-  buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string): Request.Options {
+  static buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string): Request.Options {
     let result: Request.Options = {
       uri: `http://prod-jp.lovelive.ge.klabgames.net/main.php/${module}/${api}`,
       method: "POST",
