@@ -1,3 +1,18 @@
 {
-  "hmac_key": "xxxxxxx"
+  "hmac_key": "xxxxxxx",
+  "headers": {
+    "application-id": "626776655",
+    "accept": "*/*",
+    "time-zone": "JST",
+    "api-model": "straightforward",
+    "client-version": "17.6",
+    "host": "prod-jp.lovelive.ge.klabgames.net",
+    "os": "Android",
+    "accept-encoding": "gzip,deflate",
+    "debug": "1",
+    "region": "392",
+    "bundle-version": "3.2",
+    "os-version": "A0001 oneplus MSM8974 6.0.1",
+    "platform-type": "2"
+  }
 }
