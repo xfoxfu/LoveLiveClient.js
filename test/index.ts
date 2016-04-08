@@ -7,7 +7,7 @@ const utils = require("utility");
 // Client
 import Client = require("../");
 describe("Client", () => {
-  describe("#calculateHash", () => {
+  describe(".calculateHash", () => {
     it(`(data: string)`, () => {
       expect(Client.calculateHash("{}")).to.eql("f8420b09e5ae0bc09f36f8c928dfaccf3b91d6ab");
     });
@@ -15,7 +15,7 @@ describe("Client", () => {
       expect(Client.calculateHash({})).to.eql("f8420b09e5ae0bc09f36f8c928dfaccf3b91d6ab");
     });
   });
-  describe("#buildUpRequestOpt", () => {
+  describe(".buildUpRequestOptWithoutAuthentication", () => {
     it("(method, api, nonce)", () => {
       let should_result = {
         uri: "http://prod-jp.lovelive.ge.klabgames.net/main.php/module/api",
@@ -38,7 +38,7 @@ describe("Client", () => {
         },
         json: true
       };
-      expect(Client.buildUpRequestOpt("module", "api", "a")).to.eql(should_result);
+      expect(Client.buildUpRequestOptWithoutAuthentication("module", "api", "a")).to.eql(should_result);
     });
     it("(method, api, nonce, data, token)", () => {
       let should_result = {
@@ -64,7 +64,7 @@ describe("Client", () => {
         json: true,
         formData: { request_data: `{"test":true}` }
       };
-      expect(Client.buildUpRequestOpt("module", "api", "1", { test: true }, "token")).to.eql(should_result);
+      expect(Client.buildUpRequestOptWithoutAuthentication("module", "api", "1", { test: true }, "token")).to.eql(should_result);
     });
   });
 });
