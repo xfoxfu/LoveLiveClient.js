@@ -1,17 +1,57 @@
 /// <reference path="./references.d.ts" />
 
 import crypto = require("crypto");
-import config = require("./config");
 import request = require("request-promise");
 import * as Request from "request";
 const utils = require("utility");
 import uuid = require("node-uuid");
 import merge = require("merge");
 
+let config = {
+  "hmac_key": "xxxxxxx",
+  "headers": {
+    "application-id": "626776655",
+    "accept": "*/*",
+    "time-zone": "JST",
+    "api-model": "straightforward",
+    "client-version": "17.6",
+    "host": "prod-jp.lovelive.ge.klabgames.net",
+    "os": "Android",
+    "accept-encoding": "gzip,deflate",
+    "debug": "1",
+    "region": "392",
+    "bundle-version": "3.2",
+    "os-version": "A0001 oneplus MSM8974 6.0.1",
+    "platform-type": "2"
+  }
+};
 export = class Client {
   /**
    * basic functions
    */
+  static setConfig(conf: {
+    hmac_key: string;
+    headers: {
+      "application-id": string;
+      "accept": string;
+      "time-zone": string;
+      "api-model": string;
+      "client-version": string;
+      "host": string;
+      "os": string;
+      "accept-encoding": string;
+      "debug": string;
+      "region": string;
+      "bundle-version": string;
+      "os-version": string;
+      "platform-type": string;
+      "authorize": string;
+      "content-type"?: string;
+      "x-message-code"?: string;
+    };
+  }) {
+    config = conf;
+  }
   private static calculateHash(data: string | Object): string {
     let plainText: string;
     if (typeof data === "string") {

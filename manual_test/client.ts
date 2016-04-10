@@ -6,6 +6,7 @@ const utils = require("utility");
 import Client = require("../");
 
 (async () => {
+  Client.setConfig(require("./config.json"));
   let client = await Client.register();
   console.log(client.user);
   await client.startGame();
