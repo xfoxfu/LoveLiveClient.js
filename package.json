@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www",
     "test": "make test",
     "postinstall": "make install&& make compile",
-    "prestart": "make compile",
     "pretest": "make compile"
   },
   "dependencies": {
+    "merge": "^1.2.0",
+    "node-uuid": "^1.4.7",
     "request-promise": "^2.0.1",
     "typescript": "^1.8.9",
     "typings": "^0.7.12",
@@ -35,6 +35,7 @@
     "chai": "^3.5.0",
     "cz-conventional-changelog": "^1.1.5",
     "mocha": "^2.4.5",
+    "request-debug": "^0.2.0",
     "tslint": "^3.7.1",
     "tslint-eslint-rules": "^1.2.0"
   },
