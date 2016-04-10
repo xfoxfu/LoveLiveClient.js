@@ -12,7 +12,7 @@ export = class Client {
   /**
    * basic functions
    */
-  static calculateHash(data: string | Object): string {
+  private static calculateHash(data: string | Object): string {
     let plainText: string;
     if (typeof data === "string") {
       plainText = data;
@@ -21,7 +21,7 @@ export = class Client {
     }
     return crypto.createHmac("sha1", config.hmac_key).update(plainText).digest().toString("hex");
   };
-  static buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string, customHeaders?: any): Request.Options {
+  private static buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string, customHeaders?: any): Request.Options {
     if (data && token) {
       return Client.buildUpRequestOptPlain(`${module}/${api}`, nonce, data, token, customHeaders);
     } else {
@@ -59,14 +59,24 @@ export = class Client {
   private nonce = 2;
 
   /**
-   * client basic
+   * client operations
    */
   constructor(key: string, passwd: string) {
     this.user.loginKey = key;
     this.user.loginPasswd = passwd;
   }
-  async initialize() {
-    this.buildUpUserToken();
+  async startGame() {
+    await this.buildUpUserToken();
+    await this.getUserInfo();
+    await this.getPersonalNotice();
+    await this.tosCheckAndAgree();
+    await this.checkIfConnected();
+    await this.getLBonus();
+    await this.getStartUpInformation();
+  }
+  async generateTransferCode() {
+    // TODO validate expiration
+    return (await this.getTransferCode()).code;
   }
 
   /**
@@ -84,10 +94,10 @@ export = class Client {
     let accountCredits = Client.generateCreditalPair();
     let client = new Client(accountCredits[0], accountCredits[1]);
     client.user.token = await client.getInitialToken();
-    await client.startUp();
+    await client.startUpNewAccount();
     await client.startWithoutInvite();
     await client.buildUpUserToken();
-    await client.userInfo();
+    await client.getUserInfo();
     await client.tosCheckAndAgree();
     await client.changeName(name);
     await client.tutorialProgress(1);
@@ -112,6 +122,22 @@ export = class Client {
       let rankUpPartner = result[0]["result"][9]["unit_owning_user_id"];
       await client.unitRankUp(base, rankUpPartner);
       await client.skipTutorial();
+    }
+    return client;
+  }
+  static async startFromTransferCode(code: string) {
+    // When v8 supports destructing, use the feature
+    let accountCredits = Client.generateCreditalPair();
+    let client = new Client(accountCredits[0], accountCredits[1]);
+    client.user.token = await client.getInitialToken();
+    await client.startUpNewAccount();
+    await client.startWithoutInvite();
+    await client.buildUpUserToken();
+    await client.getUserInfo();
+    await client.tosCheckAndAgree();
+    let result = await client.applyTransferCode(code);
+    if (result !== 200) {
+      throw "Invaid transfer code!";
     }
     return client;
   }
@@ -152,7 +178,7 @@ export = class Client {
     return await request(this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
   }
   private async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]) {
-    let dataToSend: any[]=[];
+    let dataToSend: any[] = [];
     for (let request of requests) {
       dataToSend.push(merge({
         module: request.module,
@@ -170,19 +196,19 @@ export = class Client {
     let result = await request(Client.buildUpRequestOpt("login", "authkey", "1"));
     return result["response_data"]["authorize_token"];
   }
-  private async getUserTokenAndId() {
+  async getUserTokenAndId() {
     let result = await request(
       Client.buildUpRequestOpt("login", "login", "2",
         { "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd }, await this.getInitialToken()));
     return <{ authorize_token: string; user_id: number; }>result["response_data"];
   }
-  async buildUpUserToken() {
+  private async buildUpUserToken() {
     // When Node.js supports destructing, use it.
     let result = await this.getUserTokenAndId();
     this.user.token = result.authorize_token;
     this.user.id = result.user_id;
   }
-  async startUp() {
+  private async startUpNewAccount() {
     interface IStartUpResult {
       response_data: {
         login_key: string;
@@ -197,14 +223,14 @@ export = class Client {
       throw "Invaid api result: key or passwd mismatch";
     }
   }
-  async startWithoutInvite() {
+  private async startWithoutInvite() {
     interface IStartWithoutInviteResult {
       response_data: any[];
       status_code: number;
     }
     await this.performRequestPlain<IStartWithoutInviteResult>("login", "startWithoutInvite");
   }
-  async userInfo() {
+  async getUserInfo() {
     interface IUserInfoResult {
       response_data: {
         user_id: number;
@@ -246,7 +272,7 @@ export = class Client {
       await this.tosAgree(tosCheckResult["response_data"]["tos_id"]);
     }
   }
-  async tosAgree(tos_id: number) {
+  private async tosAgree(tos_id: number) {
     await this.performRequestPlain("tos", "tosAgree", { tos_id: tos_id });
   }
   async changeName(nickname: string) {
@@ -260,7 +286,7 @@ export = class Client {
     return await this.performRequestDetailed<IChangeNameResult>("user", "changeName", { name: nickname });
   }
   // set state to 1 to skip it
-  async tutorialProgress(state: number) {
+  private async tutorialProgress(state: number) {
     await this.performRequestDetailed("tutorial", "progress", { tutorial_state: state });
   }
   async getStartUpInformation() {
@@ -327,5 +353,43 @@ export = class Client {
   async unitRankUp(base: number, partner: number) {
     await this.performRequestDetailed("unit", "rankUp",
       { "base_owning_unit_user_id": base, "unit_owning_user_ids": partner });
+  }
+  async getLBonus() {
+    await this.performRequestDetailed("lbonus", "execute");
+  }
+  async getPersonalNotice() {
+    return await this.performRequestDetailed<{
+      response_data: {
+        "has_notice": boolean;
+        "notice_id": number;
+        "type": number;
+        "title": number;
+        "contents": number;
+      };
+      status_code: number;
+    }>("personalnotice", "get");
+  }
+  async checkIfConnected(): Promise<boolean> {
+    return (await this.performRequestDetailed<{
+      response_data: {
+        is_connected: boolean;
+      };
+      status_code: number;
+    }>("platformAccount", "isConnectedLlAccount")).response_data.is_connected;
+  }
+  private async getTransferCode() {
+    return (await this.performRequestDetailed<{
+      response_data: {
+        code: string;
+        expire_data: string;
+      };
+      status_code: number;
+    }>("handover", "start")).response_data;
+  }
+  private async applyTransferCode(code: string) {
+    return (await this.performRequestDetailed<{
+      response_data: any;
+      status_code: number;
+    }>("handover", "exec", { handover: code })).status_code;
   }
 }

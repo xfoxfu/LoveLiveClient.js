@@ -8,4 +8,9 @@ import Client = require("../");
 (async () => {
   let client = await Client.register();
   console.log(client.user);
+  await client.startGame();
+  let code = await client.generateTransferCode();
+  console.log(code);
+  let newClient = await Client.startFromTransferCode(code);
+  console.log(newClient);
 })();
