@@ -6,6 +6,7 @@ import * as Request from "request";
 const utils = require("utility");
 import uuid = require("node-uuid");
 import merge = require("merge");
+let delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 let config = {
   "hmac_key": "xxxxxxx",
@@ -117,6 +118,18 @@ export = class Client {
   async generateTransferCode() {
     // TODO validate expiration
     return (await this.getTransferCode()).code;
+  }
+  async playSong(interval?: number) {
+    if (!interval) interval = 0;
+    let parties = await this.getLivePartyList(3);
+    let decks = await this.getLiveDeckList(parties.response_data.party_list[0].user_info.user_id);
+    let songInfo = await this.startLive(parties.response_data.party_list[0].user_info.user_id, 1, 3);
+    await delay(interval);
+    return await this.getLiveReward(143, 38, 0, 0, 0,
+      35, 181, 3,
+      25684, 0, 0,
+      songInfo.response_data.is_marathon_event ? songInfo.response_data.marathon_event_id : 0,
+      songInfo.response_data.is_marathon_event ? 35 : 0);
   }
 
   /**
@@ -431,5 +444,139 @@ export = class Client {
       response_data: any;
       status_code: number;
     }>("handover", "exec", { handover: code })).status_code;
+  }
+  // TODO find out how difficulty is calculated
+  private async getLivePartyList(difficulty: number) {
+    difficulty = 3;
+    return await this.performRequestDetailed<{
+      response_data: {
+        party_list: {
+          "user_info": {
+            "user_id": number;
+            "name": string;
+            "level": number;
+          };
+          "center_unit_info": {
+            "love": number;
+            "unit_id": number;
+            "level": number;
+            "smile": number;
+            "cute": number;
+            "cool": number;
+            "is_rank_max": boolean;
+            "is_love_max": boolean;
+            "is_level_max": boolean;
+            "max_hp": number;
+            "unit_skill_level": number;
+          };
+          "setting_award_id": number;
+          "available_social_point": number;
+          "friend_status": number;
+        }[];
+      };
+      status_code: number;
+    }>("live", "partyList", { live_difficulty_id: difficulty });
+  }
+  private async getLiveDeckList(party_user_id: number) {
+    return await this.performRequestDetailed<{
+      "response_data": {
+        "unit_deck_list": {
+          "unit_deck_id": number;
+          "main_flag": boolean;
+          "deck_name": string;
+          "unit_list": {
+            "unit_owning_user_id": number;
+          }[];
+          "party_info": {
+            "user_info": {
+              "user_id": number;
+              "name": string;
+              "level": number;
+            };
+            "center_unit_info": {
+              "unit_id": number;
+              "level": number;
+              "smile": number;
+              "cute": number;
+              "cool": number;
+              "is_rank_max": boolean;
+              "is_love_max": boolean;
+              "is_level_max": boolean;
+            };
+            "setting_award_id": number;
+          };
+          "subtotal_smile": number;
+          "subtotal_cute": number;
+          "subtotal_cool": number;
+          "subtotal_skill": number;
+          "subtotal_hp": number;
+          "total_smile": number;
+          "total_cute": number;
+          "total_cool": number;
+          "total_skill": number;
+          "total_hp": number;
+          "prepared_hp_damage": number;
+        }[];
+      };
+      "status_code": number;
+    }>("live", "deckList", { party_user_id: party_user_id });
+  }
+  // TODO find out how difficulty is calculated
+  private async startLive(partyUserID: number, unitDeckID: number, liveDifficultyID: number) {
+    return await this.performRequestDetailed<{
+      "response_data": {
+        "rank_info": {
+          "rank": number;
+          "rank_min": number;
+          "rank_max": number;
+        }[];
+        "live_info": {
+          "live_difficulty_id": number;
+          "is_random": boolean;
+          "dangerous": boolean;
+          "use_quad_point": boolean;
+          "notes_speed": boolean;
+          "notes_list": {
+            "timing_sec": number;
+            "notes_attribute": number;
+            "notes_level": number;
+            "effect": number;
+            "effect_value": number;
+            "position": number;
+          }[];
+        }[];
+        "is_marathon_event": boolean;
+        "marathon_event_id": number;
+        "energy_full_time": string;
+        "over_max_energy": number;
+        "live_se_id": number;
+      };
+      "status_code": number;
+    }>("live", "play", {
+      live_difficulty_id: liveDifficultyID,
+      party_user_id: partyUserID,
+      unit_deck_id: unitDeckID
+    });
+  }
+  private async getLiveReward(
+    perfect: number, great: number, good: number, bad: number, miss: number,
+    love: number, maxCombo: number, liveDifficultyID: number,
+    smile: number, cute: number, cool: number,
+    eventID: number, eventPoint: number) {
+    return await this.performRequestDetailed("live", "reward", {
+      "good_cnt": good,
+      "miss_cnt": miss,
+      "great_cnt": great,
+      "love_cnt": love, // bond pt
+      "max_combo": maxCombo,
+      "score_smile": smile,
+      "perfect_cnt": perfect,
+      "bad_cnt": bad,
+      "event_point": eventPoint,
+      "live_difficulty_id": liveDifficultyID,
+      "score_cute": cute,
+      "score_cool": cool,
+      "event_id": eventID
+    });
   }
 }
