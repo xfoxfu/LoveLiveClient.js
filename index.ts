@@ -8,9 +8,6 @@ const utils = require("utility");
 import uuid = require("node-uuid");
 import merge = require("merge");
 
-require("request-debug")(request);
-request.debug = true;
-
 export = class Client {
   /**
    * basic functions
@@ -85,7 +82,6 @@ export = class Client {
     if (!leader) leader = 1;
     // When v8 supports destructing, use the feature
     let accountCredits = Client.generateCreditalPair();
-    console.log(accountCredits); // DEBUG
     let client = new Client(accountCredits[0], accountCredits[1]);
     client.user.token = await client.getInitialToken();
     await client.startUp();
@@ -185,7 +181,6 @@ export = class Client {
     let result = await this.getUserTokenAndId();
     this.user.token = result.authorize_token;
     this.user.id = result.user_id;
-    console.log(this.user.token); // debug
   }
   async startUp() {
     interface IStartUpResult {
