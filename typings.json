@@ -1,0 +1,13 @@
+{
+  "ambientDependencies": {
+    "chai": "registry:dt/chai#3.4.0+20160317120654",
+    "mocha": "registry:dt/mocha#2.2.5+20160317120654",
+    "node": "registry:dt/node#4.0.0+20160330064709",
+    "request-promise": "registry:dt/request-promise#0.4.2+20160316155526"
+  },
+  "dependencies": {
+    "merge": "registry:npm/merge#1.2.0+20160128181220",
+    "node-uuid": "registry:npm/node-uuid#1.4.0+20160224202522",
+    "request": "registry:npm/request#2.69.0+20160304121250"
+  }
+}
