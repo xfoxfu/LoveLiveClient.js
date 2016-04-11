@@ -1,9 +1,9 @@
 install:
-	$(shell npm bin)/typings install -so
+	typings install -so
 compile:
-	$(shell npm bin)/typings install -so
-	$(shell npm bin)/tsc
+	typings install -so
+	tsc
 test:
-	$(shell npm bin)/typings install -so
+	typings install -so
 .DEFAULT: install compile
 .PHONY: install compile test
