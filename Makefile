@@ -1,8 +1,8 @@
 install:
-	node_modules/.bin/typings install -so
+	$(shell npm bin)/typings install -so
 compile:
-	node_modules/.bin/tsc
+	$(shell npm bin)/typings install -so
 test:
-	node_modules/.bin/mocha
+	$(shell npm bin)/typings install -so
 .DEFAULT: install compile
 .PHONY: install compile test
