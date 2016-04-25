@@ -9,7 +9,7 @@ import merge = require("merge");
 let delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 let config = {
-  "hmac_key": "xxxxxxx",
+  "llmcg_token": "xxxxxxx",
   "headers": {
     "application-id": "626776655",
     "accept": "*/*",
@@ -31,7 +31,7 @@ export = class Client {
    * basic functions
    */
   static setConfig(conf: {
-    hmac_key: string;
+    llmcg_token: string;
     headers: {
       "application-id": string;
       "accept": string;
@@ -53,23 +53,31 @@ export = class Client {
   }) {
     config = conf;
   }
-  private static calculateHash(data: string | Object): string {
+  private static async calculateHash(data: string | Object): Promise<string> {
     let plainText: string;
     if (typeof data === "string") {
       plainText = data;
     } else {
       plainText = JSON.stringify(data);
     }
-    return crypto.createHmac("sha1", config.hmac_key).update(plainText).digest().toString("hex");
+    return (await request({
+      url:"http://llmcg.xfox.pw/api",
+      json: true,
+      method: "POST",
+      body: {
+        data: plainText,
+        token: config.llmcg_token
+      }
+    }))["X-Message-Code"];
   };
-  private static buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string, customHeaders?: any): Request.Options {
+  private static async buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
     if (data && token) {
-      return Client.buildUpRequestOptPlain(`${module}/${api}`, nonce, data, token, customHeaders);
+      return await Client.buildUpRequestOptPlain(`${module}/${api}`, nonce, data, token, customHeaders);
     } else {
       return Client.buildUpRequestOptPlain(`${module}/${api}`, nonce);
     }
   };
-  private static buildUpRequestOptPlain(url: string, nonce: string, data?: any, token?: string, customHeaders?: any): Request.Options {
+  private static async buildUpRequestOptPlain(url: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
     let result: Request.Options = {
       uri: `http://prod-jp.lovelive.ge.klabgames.net/main.php/${url}`,
       method: "POST",
@@ -83,7 +91,7 @@ export = class Client {
     }
     if (data) {
       result.formData = { request_data: JSON.stringify(data) };
-      result.headers["x-message-code"] = this.calculateHash(data);
+      result.headers["x-message-code"] = await this.calculateHash(data);
     }
     return result;
   }
@@ -198,27 +206,27 @@ export = class Client {
   /**
    * api basic
    */
-  private buildUpRequestOptWithCredital(module: string, api: string, nonce: string, data: any): Request.Options {
+  private async buildUpRequestOptWithCredital(module: string, api: string, nonce: string, data: any): Promise<Request.Options> {
     if ((!this.user.loginKey) && (!this.user.loginPasswd) && (!this.user.token)) {
       throw "Client not initialized!";
     }
     data["login_key"] = this.user.loginKey;
     data["login_passwd"] = this.user.loginPasswd;
     let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
-    return result;
+    return await result;
   }
-  private buildUpRequestOptPlain(module: string, api: string, nonce: string, data: any): Request.Options {
+  private async buildUpRequestOptPlain(module: string, api: string, nonce: string, data: any): Promise<Request.Options> {
     if (!this.user.token) {
       throw "Client not initialized!";
     }
     let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
-    return result;
+    return await result;
   }
   // When Node.js adapts to v8 shipped with Chrome 49, use this line instead of the following 2 lines.
   // private async performRequestPlain<TResult>(module: string, api: string, data:any = {}): Promise<TResult> {
   private async performRequestPlain<TResult>(module: string, api: string, data?: any): Promise<TResult> {
     if (!data) data = {};
-    return await request(this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString(), data));
+    return await request(await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString(), data));
   }
   private async performRequestDetailed<TResult>(module: string, api: string, data?: any): Promise<TResult> {
     let dataToSend = {
@@ -228,7 +236,7 @@ export = class Client {
       commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce++}`
     };
     dataToSend = merge(dataToSend, data);
-    return await request(this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
+    return await request(await this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
   }
   private async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]) {
     let dataToSend: any[] = [];
@@ -239,19 +247,19 @@ export = class Client {
         timestamp: utils.timestamp()
       }, request.data));
     }
-    return await request(Client.buildUpRequestOptPlain("api", (this.nonce++).toString(), dataToSend, this.user.token));
+    return await request(await Client.buildUpRequestOptPlain("api", (this.nonce++).toString(), dataToSend, this.user.token));
   }
 
   /**
    * api implement
    */
   async getInitialToken(): Promise<string> {
-    let result = await request(Client.buildUpRequestOpt("login", "authkey", "1"));
+    let result = await request(await Client.buildUpRequestOpt("login", "authkey", "1"));
     return result["response_data"]["authorize_token"];
   }
   async getUserTokenAndId() {
     let result = await request(
-      Client.buildUpRequestOpt("login", "login", "2",
+      await Client.buildUpRequestOpt("login", "login", "2",
         { "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd }, await this.getInitialToken()));
     return <{ authorize_token: string; user_id: number; }>result["response_data"];
   }
