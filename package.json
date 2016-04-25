@@ -1,6 +1,6 @@
 {
   "name": "llsifclient",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "test": "make test",
@@ -10,9 +10,9 @@
   "dependencies": {
     "merge": "^1.2.0",
     "node-uuid": "^1.4.7",
-    "request-promise": "^2.0.1",
-    "typescript": "^1.8.9",
-    "typings": "^0.7.12",
+    "request-promise": "^3.0.0",
+    "typescript": "^1.8.10",
+    "typings": "^0.8.1",
     "utility": "^1.7.0"
   },
   "description": "Third-party LLSIF client.",
@@ -33,15 +33,9 @@
   "homepage": "https://github.com/coderfox/Node-LLSIF",
   "devDependencies": {
     "chai": "^3.5.0",
-    "cz-conventional-changelog": "^1.1.5",
     "mocha": "^2.4.5",
     "request-debug": "^0.2.0",
-    "tslint": "^3.7.1",
+    "tslint": "^3.8.0",
     "tslint-eslint-rules": "^1.2.0"
-  },
-  "config": {
-    "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
-    }
   }
 }
