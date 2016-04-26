@@ -118,8 +118,8 @@ export = class Client {
     this.user.loginPasswd = passwd;
   }
   async startGame(delays?: { tos?: number }) {
-    await this.api.buildUpUserToken();
-    await this.api.getUserInfo();
+    await this.buildUpUserToken();
+    await this.api.user.userInfo();
     await this.api.getPersonalNotice();
     await this.api.tosCheckAndAgree(delays.tos); // delay
     await this.api.checkIfConnected();
@@ -146,7 +146,6 @@ export = class Client {
       songInfo.response_data.is_marathon_event ? songInfo.response_data.marathon_event_id : 0,
       songInfo.response_data.is_marathon_event ? 35 : 0);
   }
-
   /**
    * create user
    */
@@ -165,11 +164,11 @@ export = class Client {
     // When v8 supports destructing, use the feature
     let accountCredits = Client.generateCreditalPair();
     let client = new Client(accountCredits[0], accountCredits[1]);
-    client.user.token = await client.api.getInitialToken();
-    await client.api.startUpNewAccount();
-    await client.api.startWithoutInvite();
-    await client.api.buildUpUserToken();
-    await client.api.getUserInfo();
+    client.user.token = await client.api.login.authkey();
+    await client.api.login.startUp();
+    await client.api.login.startWithoutInvite();
+    await client.buildUpUserToken();
+    await client.api.user.userInfo();
     await client.api.tosCheckAndAgree(delays.tos); // with delay
     await delay(delays.setName); // delay
     await client.api.changeName(name);
@@ -177,13 +176,13 @@ export = class Client {
     await client.api.getStartUpInformation();
     await client.api.unitAllAndDeck();
     let availableUnits: number[] = [];
-    for (let unit of (await client.api.getUnitList()).response_data.unit_initial_set) {
+    for (let unit of (await client.api.login.unitList()).response_data.unit_initial_set) {
       availableUnits.push(unit.unit_initial_set_id);
     }
     if (!leader) leader = lib.randomInt(0, availableUnits.length - 1);
     if (availableUnits.indexOf(leader) >= 0) {
       await delay(delays.selectLeader); // delay
-      await client.api.unitSelect(leader);
+      await client.api.login.unitSelect(leader);
     } else {
       throw "Invaid leader id";
     }
@@ -205,11 +204,11 @@ export = class Client {
     // When v8 supports destructing, use the feature
     let accountCredits = Client.generateCreditalPair();
     let client = new Client(accountCredits[0], accountCredits[1]);
-    client.user.token = await client.api.getInitialToken();
-    await client.api.startUpNewAccount();
-    await client.api.startWithoutInvite();
-    await client.api.buildUpUserToken();
-    await client.api.getUserInfo();
+    client.user.token = await client.api.login.authkey();
+    await client.api.login.startUp();
+    await client.api.login.startWithoutInvite();
+    await client.buildUpUserToken();
+    await client.api.user.userInfo();
     await client.api.tosCheckAndAgree(delays.tos); // delay
     await delay(delays.code); // delay
     let result = await client.api.applyTransferCode(code);
@@ -218,7 +217,12 @@ export = class Client {
     }
     return client;
   }
-
+  async buildUpUserToken() {
+    // When Node.js supports destructing, use it.
+    let result = await this.api.login.login();
+    this.user.token = result.authorize_token;
+    this.user.id = result.user_id;
+  }
   /**
    * api basic
    */
@@ -265,77 +269,105 @@ export = class Client {
     }
     return await request(await Client.buildUpRequestOptPlain("api", (this.nonce++).toString(), dataToSend, this.user.token));
   }
-
   /**
    * api implement
    */
   api = {
-    getInitialToken: async (): Promise<string> => {
-      let result = await request(await Client.buildUpRequestOpt("login", "authkey", "1"));
-      return result["response_data"]["authorize_token"];
-    },
-    getUserTokenAndId: async () => {
-      let result = await request(
-        await Client.buildUpRequestOpt("login", "login", "2",
-          { "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd }, await this.api.getInitialToken()));
-      return <{ authorize_token: string; user_id: number; }>result["response_data"];
-    },
-    buildUpUserToken: async () => {
-      // When Node.js supports destructing, use it.
-      let result = await this.api.getUserTokenAndId();
-      this.user.token = result.authorize_token;
-      this.user.id = result.user_id;
-    },
-    startUpNewAccount: async () => {
-      interface IStartUpResult {
-        response_data: {
-          login_key: string;
-          login_passwd: string;
-          user_id: number;
-        };
-        status_code: number;
+    login: {
+      /**
+       * login/authkey
+       * 
+       * Get basically authentication key.
+       * 
+       * @return Promise<string>
+       */
+      authkey: async (): Promise<string> => {
+        let result = await request(await Client.buildUpRequestOpt("login", "authkey", "1"));
+        return result["response_data"]["authorize_token"];
+      },
+      /**
+       * login/login
+       * 
+       * Get user-related token.
+       * 
+       * @return Promise<string>
+       */
+      login: async () => {
+        let result: { response_data: { authorize_token: string; user_id: number; }; } = await request(
+          await Client.buildUpRequestOpt("login", "login", "2",
+            { "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd }, await this.api.login.authkey()));
+        return result["response_data"];
+      },
+      startUp: async () => {
+        interface IStartUpResult {
+          response_data: {
+            login_key: string;
+            login_passwd: string;
+            user_id: number;
+          };
+          status_code: number;
+        }
+        let result = await this.performRequestPlain<IStartUpResult>("login", "startUp");
+        if (result["response_data"]["login_key"] !== this.user.loginKey ||
+          result["response_data"]["login_passwd"] !== this.user.loginPasswd) {
+          throw "Invaid api result: key or passwd mismatch";
+        }
+      },
+      startWithoutInvite: async () => {
+        interface IStartWithoutInviteResult {
+          response_data: any[];
+          status_code: number;
+        }
+        await this.performRequestPlain<IStartWithoutInviteResult>("login", "startWithoutInvite");
+      },
+      unitList: async () => {
+        interface IUnitListResult {
+          response_data: {
+            unit_initial_set: {
+              unit_initial_set_id: number;
+              unit_list: number[];
+              center_unit_id: number;
+            }[];
+          };
+          status_code: number;
+        }
+        return await this.performRequestDetailed<IUnitListResult>("login", "unitList");
+      },
+      // set the center of initial team
+      unitSelect: async (unitId: number) => {
+        await this.performRequestDetailed("login", "unitSelect", { unit_initial_set_id: unitId });
       }
-      let result = await this.performRequestPlain<IStartUpResult>("login", "startUp");
-      if (result["response_data"]["login_key"] !== this.user.loginKey ||
-        result["response_data"]["login_passwd"] !== this.user.loginPasswd) {
-        throw "Invaid api result: key or passwd mismatch";
-      }
     },
-    startWithoutInvite: async () => {
-      interface IStartWithoutInviteResult {
-        response_data: any[];
-        status_code: number;
+    user: {
+      userInfo: async () => {
+        interface IUserInfoResult {
+          response_data: {
+            user_id: number;
+            name: string;
+            level: number;
+            exp: number;
+            previous_exp: number;
+            next_exp: number;
+            game_coin: number;
+            sns_coin: number;
+            free_sns_coin: number;
+            paid_sns_coin: number;
+            social_point: number;
+            unit_max: number;
+            energy_max: number;
+            energy_max_time: string; // 2016-04-01 19:32:46
+            energy_full_need_time: number;
+            over_max_energy: number;
+            friend_max: number;
+            invite_code: string;
+            insert_date: string; // 2016-04-01 19:32:46
+            update_date: string; // 2016-04-01 19:32:46
+            tutorial_state: number;
+          };
+          status_code: number;
+        }
+        return await this.performRequestDetailed<IUserInfoResult>("user", "userInfo");
       }
-      await this.performRequestPlain<IStartWithoutInviteResult>("login", "startWithoutInvite");
-    },
-    getUserInfo: async () => {
-      interface IUserInfoResult {
-        response_data: {
-          user_id: number;
-          name: string;
-          level: number;
-          exp: number;
-          previous_exp: number;
-          next_exp: number;
-          game_coin: number;
-          sns_coin: number;
-          free_sns_coin: number;
-          paid_sns_coin: number;
-          social_point: number;
-          unit_max: number;
-          energy_max: number;
-          energy_max_time: string; // 2016-04-01 19:32:46
-          energy_full_need_time: number;
-          over_max_energy: number;
-          friend_max: number;
-          invite_code: string;
-          insert_date: string; // 2016-04-01 19:32:46
-          update_date: string; // 2016-04-01 19:32:46
-          tutorial_state: number;
-        };
-        status_code: number;
-      }
-      return await this.performRequestDetailed<IUserInfoResult>("user", "userInfo");
     },
     tosCheckAndAgree: async (interval?: number) => {
       interface ITosCheckResult {
@@ -393,23 +425,6 @@ export = class Client {
         { module: "online", api: "info" },
         { module: "challenge", api: "challengeInfo" }
       ]);
-    },
-    getUnitList: async () => {
-      interface IUnitListResult {
-        response_data: {
-          unit_initial_set: {
-            unit_initial_set_id: number;
-            unit_list: number[];
-            center_unit_id: number;
-          }[];
-        };
-        status_code: number;
-      }
-      return await this.performRequestDetailed<IUnitListResult>("login", "unitList");
-    },
-    // set the center of initial team
-    unitSelect: async (unitId: number) => {
-      await this.performRequestDetailed("login", "unitSelect", { unit_initial_set_id: unitId });
     },
     skipTutorial: async () => {
       await this.performRequestDetailed("tutorial", "skip");
@@ -615,4 +630,4 @@ export = class Client {
       });
     }
   }
-}
+};
