@@ -6,7 +6,7 @@ import * as Request from "request";
 const utils = require("utility");
 import uuid = require("node-uuid");
 import merge = require("merge");
-let delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+let delay = (ms: number) => new Promise(r => setTimeout(r, ms || 0));
 
 let config = {
   "llmcg_token": "xxxxxxx",
@@ -26,6 +26,9 @@ let config = {
     "platform-type": "2"
   }
 };
+namespace lib {
+  export let randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min)) + min;
+}
 export = class Client {
   /**
    * basic functions
@@ -61,7 +64,7 @@ export = class Client {
       plainText = JSON.stringify(data);
     }
     return (await request({
-      url:"http://llmcg.xfox.pw/api",
+      url: "http://llmcg.xfox.pw/api",
       json: true,
       method: "POST",
       body: {
@@ -114,18 +117,22 @@ export = class Client {
     this.user.loginKey = key;
     this.user.loginPasswd = passwd;
   }
-  async startGame() {
+  async startGame(delays?: { tos?: number }) {
     await this.buildUpUserToken();
     await this.getUserInfo();
     await this.getPersonalNotice();
-    await this.tosCheckAndAgree();
+    await this.tosCheckAndAgree(delays.tos); // delay
     await this.checkIfConnected();
     await this.getLBonus();
+     // TODO simulate webview
     await this.getStartUpInformation();
   }
   async generateTransferCode() {
     // TODO validate expiration
-    return (await this.getTransferCode()).code;
+    return await this.getTransferCode();
+  }
+  async regenerateTransferCode(){
+    return await this.renewTransferCode();
   }
   async playSong(interval?: number) {
     if (!interval) interval = 0;
@@ -148,9 +155,13 @@ export = class Client {
   }
   // When Node.js adapts to v8 shipped with Chrome 49, use this line instead of the following 3 lines.
   // static async register(name = "Node-LLSIFClient", leader = 1): Promise<Client> {
-  static async register(name?: string, leader?: number): Promise<Client> {
-    if (!name) name = "Node-LLSIFClient";
-    if (!leader) leader = 1;
+  static async register(delays?: {
+    tos?: number;
+    selectLeader?: number;
+    setName?: number;
+  }, name?: string, leader?: number): Promise<Client> {
+    const defaultNames = `幻の学院生 明るい学院生 期待の学院生 純粋な学院生 素直な学院生 元気な学院生 天然な学院生 勇敢な学院生 気になる学院生 真面目な学院生 不思議な学院生 癒し系な学院生 心優しい学院生 さわやかな学院生 頼りになる学院生 さすらいの学院生 正義感あふれる学院生 カラオケ好きの学院生`.split(" ");
+    if (!name) name = defaultNames[lib.randomInt(0, defaultNames.length - 1)];
     // When v8 supports destructing, use the feature
     let accountCredits = Client.generateCreditalPair();
     let client = new Client(accountCredits[0], accountCredits[1]);
@@ -159,7 +170,8 @@ export = class Client {
     await client.startWithoutInvite();
     await client.buildUpUserToken();
     await client.getUserInfo();
-    await client.tosCheckAndAgree();
+    await client.tosCheckAndAgree(delays.tos); // with delay
+    await delay(delays.setName); // delay
     await client.changeName(name);
     await client.tutorialProgress(1);
     await client.getStartUpInformation();
@@ -168,7 +180,9 @@ export = class Client {
     for (let unit of (await client.getUnitList()).response_data.unit_initial_set) {
       availableUnits.push(unit.unit_initial_set_id);
     }
+    if (!leader) leader = lib.randomInt(0, availableUnits.length - 1);
     if (availableUnits.indexOf(leader) >= 0) {
+      await delay(delays.selectLeader); // delay
       await client.unitSelect(leader);
     } else {
       throw "Invaid leader id";
@@ -186,7 +200,8 @@ export = class Client {
     }
     return client;
   }
-  static async startFromTransferCode(code: string) {
+  static async startFromTransferCode(code: string, delays?: { tos?: number, code?: number }) {
+    // When v8 supports, use better code
     // When v8 supports destructing, use the feature
     let accountCredits = Client.generateCreditalPair();
     let client = new Client(accountCredits[0], accountCredits[1]);
@@ -195,7 +210,8 @@ export = class Client {
     await client.startWithoutInvite();
     await client.buildUpUserToken();
     await client.getUserInfo();
-    await client.tosCheckAndAgree();
+    await client.tosCheckAndAgree(delays.tos); // delay
+    await delay(delays.code); // delay
     let result = await client.applyTransferCode(code);
     if (result !== 200) {
       throw "Invaid transfer code!";
@@ -320,7 +336,7 @@ export = class Client {
     }
     return await this.performRequestDetailed<IUserInfoResult>("user", "userInfo");
   }
-  async tosCheckAndAgree() {
+  async tosCheckAndAgree(interval?: number) {
     interface ITosCheckResult {
       response_data: {
         tos_id: number;
@@ -330,6 +346,7 @@ export = class Client {
     }
     let tosCheckResult = await this.performRequestDetailed<ITosCheckResult>("tos", "tosCheck");
     if (!tosCheckResult["response_data"]["is_agreed"]) {
+      await delay(interval);
       await this.tosAgree(tosCheckResult["response_data"]["tos_id"]);
     }
   }
@@ -442,7 +459,7 @@ export = class Client {
     return (await this.performRequestDetailed<{
       response_data: {
         code: string;
-        expire_data: string;
+        expire_date: string;
       };
       status_code: number;
     }>("handover", "start")).response_data;
@@ -452,6 +469,15 @@ export = class Client {
       response_data: any;
       status_code: number;
     }>("handover", "exec", { handover: code })).status_code;
+  }
+  private async renewTransferCode(){
+    return (await this.performRequestDetailed<{
+      response_data: {
+        code: string;
+        expire_date: string;
+      };
+      status_code: number;
+    }>("handover", "renew")).response_data;
   }
   // TODO find out how difficulty is calculated
   private async getLivePartyList(difficulty: number) {

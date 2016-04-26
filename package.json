@@ -1,7 +1,6 @@
 {
   "name": "llsifclient",
-  "version": "0.2.0",
-  "private": true,
+  "version": "0.2.0-prealpha3",
   "scripts": {
     "test": "make test",
     "postinstall": "make install&& make compile",
