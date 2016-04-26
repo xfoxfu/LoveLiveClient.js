@@ -48,4 +48,12 @@ And the default value for `name` and `leader` is also changed to produce randoml
 
 **supports renew of transfer code**
 
+`client#regenerateTransferCode()`
+
 **better return value of get transfer code**
+
+From `string` To `{ code: string, expire_date: string }`
+
+**wrap plain call to APIs**
+
+From `client#{xxxxxx}` To `client#api.{xxxxxxx}`
