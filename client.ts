@@ -29,6 +29,17 @@ let config = {
 namespace lib {
   export let randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min)) + min;
 }
+namespace JsonInterfaces {
+  export interface Base<T> {
+    response_data: T;
+    status_code: number;
+  };
+  export namespace login {
+    /* tslint:disable:rule1 rule2 rule3... */
+    export interface authkey extends Base<{ authorize_token: number; }> { };
+    /* tslint:enable */
+  };
+}
 export = class Client {
   /**
    * basic functions
@@ -629,5 +640,5 @@ export = class Client {
         "event_id": eventID
       });
     }
-  }
+  };
 };
