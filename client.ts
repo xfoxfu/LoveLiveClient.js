@@ -27,18 +27,69 @@ let config = {
   }
 };
 namespace lib {
-  export let randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min)) + min;
+  export let randomInt = (min: number, max: number) => (Math.floor(Math.random() * (max - min)) + min);
+  export let randomDec = (min: number, max: number) => (Math.random() * (max - min) + min);
 }
-namespace JsonInterfaces {
-  export interface Base<T> {
+namespace HTTPInterfaces {
+  export interface ResponseBase<T> {
     response_data: T;
     status_code: number;
   };
-  export namespace login {
-    /* tslint:disable:rule1 rule2 rule3... */
-    export interface authkey extends Base<{ authorize_token: number; }> { };
-    /* tslint:enable */
+  export interface SimpleRequestBase {
   };
+  export interface DetailedRequestBase {
+    module: string;
+    action: string;
+    commandNum: string;
+    timeStamp: string;
+  };
+  export interface MultiRequestEachBase {
+    module: string;
+    action: string;
+    timestamp: string;
+  };
+  /* tslint:disable:class-name */
+  export namespace Response {
+    export namespace login {
+      export interface authkey extends ResponseBase<{ authorize_token: string; }> { };
+      export interface login extends ResponseBase<{
+        authorize_token: string;
+        user_id: number;
+        review_version: string;
+        server_timestamp: number;
+      }> { };
+      export interface startUp extends ResponseBase<{
+        login_key: string;
+        login_passwd: string;
+        user_id: number;
+      }> { };
+      export interface startWithoutInvite extends ResponseBase<any[]> { };
+      export interface unitList extends ResponseBase<{
+        unit_initial_set: {
+          unit_initial_set_id: number;
+          unit_list: number[];
+          center_unit_id: number
+        }[];
+      }> { };
+      export interface unitSelect extends ResponseBase<{ unit_id: number[] }> { };
+    };
+  };
+  export namespace RequestData {
+    export namespace login {
+      export interface Credital {
+        login_key: string;
+        login_passwd: string;
+      };
+      export interface login extends Credital { };
+      export interface startUp extends Credital { };
+      export interface startUpWithoutInvite extends Credital { };
+      export interface unitList { };
+      export interface unitSelect {
+        unit_initial_set_id: number;
+      };
+    };
+  };
+  /* tslint:enable */
 }
 export = class Client {
   /**
@@ -85,11 +136,7 @@ export = class Client {
     }))["X-Message-Code"];
   };
   private static async buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
-    if (data && token) {
-      return await Client.buildUpRequestOptPlain(`${module}/${api}`, nonce, data, token, customHeaders);
-    } else {
-      return Client.buildUpRequestOptPlain(`${module}/${api}`, nonce);
-    }
+    return await Client.buildUpRequestOptPlain(`${module}/${api}`, nonce, data, token, customHeaders);
   };
   private static async buildUpRequestOptPlain(url: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
     let result: Request.Options = {
@@ -237,36 +284,36 @@ export = class Client {
   /**
    * api basic
    */
-  private async buildUpRequestOptWithCredital(module: string, api: string, nonce: string, data: any): Promise<Request.Options> {
+  private async buildUpRequestOptWithCredital<TRequest>(module: string, api: string, nonce: string): Promise<Request.Options> {
     if ((!this.user.loginKey) && (!this.user.loginPasswd) && (!this.user.token)) {
       throw "Client not initialized!";
     }
-    data["login_key"] = this.user.loginKey;
-    data["login_passwd"] = this.user.loginPasswd;
+    let data = {
+      login_key: this.user.loginKey,
+      login_passwd: this.user.loginPasswd
+    };
     let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
     return await result;
   }
-  private async buildUpRequestOptPlain(module: string, api: string, nonce: string, data: any): Promise<Request.Options> {
+  private async buildUpRequestOptPlain<TRequest>(module: string, api: string, nonce: string, data: TRequest): Promise<Request.Options> {
     if (!this.user.token) {
       throw "Client not initialized!";
     }
     let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
     return await result;
   }
-  // When Node.js adapts to v8 shipped with Chrome 49, use this line instead of the following 2 lines.
-  // private async performRequestPlain<TResult>(module: string, api: string, data:any = {}): Promise<TResult> {
-  private async performRequestPlain<TResult>(module: string, api: string, data?: any): Promise<TResult> {
-    if (!data) data = {};
-    return await request(await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString(), data));
+  private async performRequestPlain<TResult>(module: string, api: string): Promise<TResult> {
+    return await request(await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString()));
   }
-  private async performRequestDetailed<TResult>(module: string, api: string, data?: any): Promise<TResult> {
-    let dataToSend = {
+  private async performRequestDetailed<TResult>(module: string, api: string, data?: any): Promise<TResult>;
+  private async performRequestDetailed<TResult, TRequestData>(module: string, api: string, data: TRequestData): Promise<TResult>;
+  private async performRequestDetailed(module: string, api: string, data: any) {
+    let dataToSend = merge(<HTTPInterfaces.DetailedRequestBase>{
       module: module,
       action: api,
-      timeStamp: utils.timestamp(),
+      timeStamp: utils.timestamp().toString(),
       commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce++}`
-    };
-    dataToSend = merge(dataToSend, data);
+    }, data);
     return await request(await this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
   }
   private async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]) {
@@ -275,7 +322,7 @@ export = class Client {
       dataToSend.push(merge({
         module: request.module,
         action: request.api,
-        timestamp: utils.timestamp()
+        timeStamp: utils.timestamp().toString()
       }, request.data));
     }
     return await request(await Client.buildUpRequestOptPlain("api", (this.nonce++).toString(), dataToSend, this.user.token));
@@ -293,8 +340,8 @@ export = class Client {
        * @return Promise<string>
        */
       authkey: async (): Promise<string> => {
-        let result = await request(await Client.buildUpRequestOpt("login", "authkey", "1"));
-        return result["response_data"]["authorize_token"];
+        let result: HTTPInterfaces.Response.login.authkey = await request(await Client.buildUpRequestOpt("login", "authkey", "1"));
+        return result.response_data.authorize_token;
       },
       /**
        * login/login
@@ -304,49 +351,30 @@ export = class Client {
        * @return Promise<string>
        */
       login: async () => {
-        let result: { response_data: { authorize_token: string; user_id: number; }; } = await request(
+        let result: HTTPInterfaces.Response.login.login = await request(
           await Client.buildUpRequestOpt("login", "login", "2",
             { "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd }, await this.api.login.authkey()));
-        return result["response_data"];
+        return result.response_data;
       },
       startUp: async () => {
-        interface IStartUpResult {
-          response_data: {
-            login_key: string;
-            login_passwd: string;
-            user_id: number;
-          };
-          status_code: number;
-        }
-        let result = await this.performRequestPlain<IStartUpResult>("login", "startUp");
+        let result = await this.performRequestPlain<HTTPInterfaces.Response.login.startUp>("login", "startUp");
         if (result["response_data"]["login_key"] !== this.user.loginKey ||
           result["response_data"]["login_passwd"] !== this.user.loginPasswd) {
           throw "Invaid api result: key or passwd mismatch";
         }
       },
       startWithoutInvite: async () => {
-        interface IStartWithoutInviteResult {
-          response_data: any[];
-          status_code: number;
-        }
-        await this.performRequestPlain<IStartWithoutInviteResult>("login", "startWithoutInvite");
+        await this.performRequestPlain<HTTPInterfaces.Response.login.startWithoutInvite>("login", "startWithoutInvite");
       },
       unitList: async () => {
-        interface IUnitListResult {
-          response_data: {
-            unit_initial_set: {
-              unit_initial_set_id: number;
-              unit_list: number[];
-              center_unit_id: number;
-            }[];
-          };
-          status_code: number;
-        }
-        return await this.performRequestDetailed<IUnitListResult>("login", "unitList");
+        return await this.performRequestDetailed<HTTPInterfaces.Response.login.unitList>("login", "unitList");
       },
       // set the center of initial team
       unitSelect: async (unitId: number) => {
-        await this.performRequestDetailed("login", "unitSelect", { unit_initial_set_id: unitId });
+        await this.performRequestDetailed<HTTPInterfaces.Response.login.unitSelect,
+          HTTPInterfaces.RequestData.login.unitSelect>("login", "unitSelect", {
+            unit_initial_set_id: unitId
+          });
       }
     },
     user: {
@@ -395,7 +423,7 @@ export = class Client {
       }
     },
     tosAgree: async (tos_id: number) => {
-      await this.performRequestPlain("tos", "tosAgree", { tos_id: tos_id });
+      await this.performRequestDetailed("tos", "tosAgree", { tos_id: tos_id });
     },
     changeName: async (nickname: string) => {
       interface IChangeNameResult {
