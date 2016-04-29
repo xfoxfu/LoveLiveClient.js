@@ -73,6 +73,41 @@ namespace HTTPInterfaces {
       }> { };
       export interface unitSelect extends ResponseBase<{ unit_id: number[] }> { };
     };
+    export namespace user {
+      export interface userInfo extends ResponseBase<{
+        user_id: number;
+        name: string;
+        level: number;
+        exp: number;
+        previous_exp: number;
+        next_exp: number;
+        game_coin: number;
+        sns_coin: number;
+        free_sns_coin: number;
+        paid_sns_coin: number;
+        social_point: number;
+        unit_max: number;
+        energy_max: number;
+        energy_max_time: string; // 2016-04-01 19:32:46
+        energy_full_need_time: number;
+        over_max_energy: number;
+        friend_max: number;
+        invite_code: string;
+        insert_date: string; // 2016-04-01 19:32:46
+        update_date: string; // 2016-04-01 19:32:46
+        tutorial_state: number;
+      }> { };
+      export interface changeName extends ResponseBase<{
+        before_name: string;
+        after_name: string;
+      }> { };
+    };
+    export namespace tos {
+      export interface tosCheck extends ResponseBase<{
+        tos_id: number;
+        is_agreed: number;
+      }> { };
+    }
   };
   export namespace RequestData {
     export namespace login {
@@ -88,6 +123,11 @@ namespace HTTPInterfaces {
         unit_initial_set_id: number;
       };
     };
+    export namespace user {
+      export interface changeName {
+        name: string;
+      }
+    }
   };
   /* tslint:enable */
 }
@@ -229,7 +269,7 @@ export = class Client {
     await client.api.user.userInfo();
     await client.api.tosCheckAndAgree(delays.tos); // with delay
     await delay(delays.setName); // delay
-    await client.api.changeName(name);
+    await client.api.user.changeName(name);
     await client.api.tutorialProgress(1);
     await client.api.getStartUpInformation();
     await client.api.unitAllAndDeck();
@@ -379,44 +419,15 @@ export = class Client {
     },
     user: {
       userInfo: async () => {
-        interface IUserInfoResult {
-          response_data: {
-            user_id: number;
-            name: string;
-            level: number;
-            exp: number;
-            previous_exp: number;
-            next_exp: number;
-            game_coin: number;
-            sns_coin: number;
-            free_sns_coin: number;
-            paid_sns_coin: number;
-            social_point: number;
-            unit_max: number;
-            energy_max: number;
-            energy_max_time: string; // 2016-04-01 19:32:46
-            energy_full_need_time: number;
-            over_max_energy: number;
-            friend_max: number;
-            invite_code: string;
-            insert_date: string; // 2016-04-01 19:32:46
-            update_date: string; // 2016-04-01 19:32:46
-            tutorial_state: number;
-          };
-          status_code: number;
-        }
-        return await this.performRequestDetailed<IUserInfoResult>("user", "userInfo");
+        return await this.performRequestDetailed<HTTPInterfaces.Response.user.userInfo>("user", "userInfo");
+      },
+      changeName: async (nickname: string) => {
+        return await this.performRequestDetailed<HTTPInterfaces.Response.user.changeName,
+          HTTPInterfaces.RequestData.user.changeName>("user", "changeName", { name: nickname });
       }
     },
     tosCheckAndAgree: async (interval?: number) => {
-      interface ITosCheckResult {
-        response_data: {
-          tos_id: number;
-          is_agreed: number;
-        };
-        status_code: number;
-      }
-      let tosCheckResult = await this.performRequestDetailed<ITosCheckResult>("tos", "tosCheck");
+      let tosCheckResult = await this.performRequestDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck");
       if (!tosCheckResult["response_data"]["is_agreed"]) {
         await delay(interval);
         await this.api.tosAgree(tosCheckResult["response_data"]["tos_id"]);
@@ -424,16 +435,6 @@ export = class Client {
     },
     tosAgree: async (tos_id: number) => {
       await this.performRequestDetailed("tos", "tosAgree", { tos_id: tos_id });
-    },
-    changeName: async (nickname: string) => {
-      interface IChangeNameResult {
-        response_data: {
-          before_name: string;
-          after_name: string;
-        };
-        status_code: number;
-      }
-      return await this.performRequestDetailed<IChangeNameResult>("user", "changeName", { name: nickname });
     },
     // set state to 1 to skip it
     tutorialProgress: async (state: number) => {
