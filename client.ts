@@ -107,6 +107,10 @@ namespace HTTPInterfaces {
         tos_id: number;
         is_agreed: number;
       }> { };
+      export interface tosAgree extends ResponseBase<any[]> { };
+    };
+    export namespace tutorial {
+      export interface progress extends ResponseBase<any[]> { };
     }
   };
   export namespace RequestData {
@@ -126,8 +130,18 @@ namespace HTTPInterfaces {
     export namespace user {
       export interface changeName {
         name: string;
-      }
-    }
+      };
+    };
+    export namespace tos {
+      export interface tosAgree {
+        tos_id: number;
+      };
+    };
+    export namespace tutorial {
+      export interface progress {
+        tutorial_state: number;
+      };
+    };
   };
   /* tslint:enable */
 }
@@ -219,7 +233,7 @@ export = class Client {
     await this.buildUpUserToken();
     await this.api.user.userInfo();
     await this.api.getPersonalNotice();
-    await this.api.tosCheckAndAgree(delays.tos); // delay
+    await this.tosCheckAndAgree(delays.tos); // delay
     await this.api.checkIfConnected();
     await this.api.getLBonus();
     // TODO simulate webview
@@ -267,10 +281,10 @@ export = class Client {
     await client.api.login.startWithoutInvite();
     await client.buildUpUserToken();
     await client.api.user.userInfo();
-    await client.api.tosCheckAndAgree(delays.tos); // with delay
+    await client.tosCheckAndAgree(delays.tos); // with delay
     await delay(delays.setName); // delay
     await client.api.user.changeName(name);
-    await client.api.tutorialProgress(1);
+    await client.api.tutorial.progress(1);
     await client.api.getStartUpInformation();
     await client.api.unitAllAndDeck();
     let availableUnits: number[] = [];
@@ -284,16 +298,16 @@ export = class Client {
     } else {
       throw "Invaid leader id";
     }
-    await client.api.skipTutorial();
+    await client.api.tutorial.skip();
     {
       let result = (await client.api.unitAllAndDeck())["response_data"];
       let base = result[0]["result"][0]["unit_owning_user_id"];
       let mergePartner = result[0]["result"][10]["unit_owning_user_id"];
       await client.api.unitMerge(base, mergePartner);
-      await client.api.skipTutorial();
+      await client.api.tutorial.skip();
       let rankUpPartner = result[0]["result"][9]["unit_owning_user_id"];
       await client.api.unitRankUp(base, rankUpPartner);
-      await client.api.skipTutorial();
+      await client.api.tutorial.skip();
     }
     return client;
   }
@@ -307,7 +321,7 @@ export = class Client {
     await client.api.login.startWithoutInvite();
     await client.buildUpUserToken();
     await client.api.user.userInfo();
-    await client.api.tosCheckAndAgree(delays.tos); // delay
+    await client.tosCheckAndAgree(delays.tos); // delay
     await delay(delays.code); // delay
     let result = await client.api.applyTransferCode(code);
     if (result !== 200) {
@@ -320,6 +334,13 @@ export = class Client {
     let result = await this.api.login.login();
     this.user.token = result.authorize_token;
     this.user.id = result.user_id;
+  }
+  async tosCheckAndAgree(interval?: number) {
+    let tosCheckResult = await this.api.tos.tosCheck();
+    if (!tosCheckResult["response_data"]["is_agreed"]) {
+      await delay(interval);
+      await this.api.tos.tosAgree(tosCheckResult["response_data"]["tos_id"]);
+    }
   }
   /**
    * api basic
@@ -426,19 +447,23 @@ export = class Client {
           HTTPInterfaces.RequestData.user.changeName>("user", "changeName", { name: nickname });
       }
     },
-    tosCheckAndAgree: async (interval?: number) => {
-      let tosCheckResult = await this.performRequestDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck");
-      if (!tosCheckResult["response_data"]["is_agreed"]) {
-        await delay(interval);
-        await this.api.tosAgree(tosCheckResult["response_data"]["tos_id"]);
+    tos: {
+      tosCheck: async () => {
+        return await this.performRequestDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck");
+      },
+      tosAgree: async (tosId: number) => {
+        return await this.performRequestDetailed<HTTPInterfaces.Response.tos.tosAgree>("tos", "tosAgree", { tos_id: tosId });
       }
     },
-    tosAgree: async (tos_id: number) => {
-      await this.performRequestDetailed("tos", "tosAgree", { tos_id: tos_id });
-    },
-    // set state to 1 to skip it
-    tutorialProgress: async (state: number) => {
-      await this.performRequestDetailed("tutorial", "progress", { tutorial_state: state });
+    tutorial: {
+      // set state to 1 to skip it
+      progress: async (state: number) => {
+        await this.performRequestDetailed<HTTPInterfaces.Response.tutorial.progress,
+          HTTPInterfaces.RequestData.tutorial.progress>("tutorial", "progress", { tutorial_state: state });
+      },
+      skip: async () => {
+        await this.performRequestDetailed("tutorial", "skip");
+      }
     },
     getStartUpInformation: async () => {
       return await this.performMultipleRequest([
@@ -465,9 +490,6 @@ export = class Client {
         { module: "online", api: "info" },
         { module: "challenge", api: "challengeInfo" }
       ]);
-    },
-    skipTutorial: async () => {
-      await this.performRequestDetailed("tutorial", "skip");
     },
     unitAllAndDeck: async () => {
       return await this.performMultipleRequest<{
