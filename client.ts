@@ -35,6 +35,12 @@ namespace HTTPInterfaces {
     response_data: T;
     status_code: number;
   };
+  export interface MultiResponseEachBase<T> {
+    result: T;
+    status: number;
+    commandNum: string;
+    timeStamp: string;
+  }
   export interface SimpleRequestBase {
   };
   export interface DetailedRequestBase {
@@ -111,7 +117,39 @@ namespace HTTPInterfaces {
     };
     export namespace tutorial {
       export interface progress extends ResponseBase<any[]> { };
-    }
+      export interface skip extends ResponseBase<any[]> { };
+    };
+    export namespace unit {
+      export interface unitAll extends Array<{
+        unit_owning_user_id: number;
+        unit_id: number;
+        exp: number;
+        next_exp: number;
+        level: number;
+        max_level: number;
+        rank: number;
+        max_rank: number;
+        love: number;
+        max_love: number;
+        unit_skill_level: number;
+        max_hp: number;
+        is_rank_max: boolean;
+        favorite_flag: boolean;
+        is_love_max: boolean;
+        is_level_max: boolean;
+        is_skill_level_max: boolean;
+        insert_date: string;
+      }> { };
+      export interface deckInfo extends Array<{
+        unit_deck_id: number;
+        main_flag: boolean;
+        deck_name: string;
+        unit_owning_user_ids: {
+          position: number;
+          unit_owning_user_id: number;
+        }[]
+      }> { };
+    };
   };
   export namespace RequestData {
     export namespace login {
@@ -237,7 +275,7 @@ export = class Client {
     await this.api.checkIfConnected();
     await this.api.getLBonus();
     // TODO simulate webview
-    await this.api.getStartUpInformation();
+    await this.api.multi.getStartUpInformation();
   }
   async generateTransferCode() {
     // TODO validate expiration
@@ -285,8 +323,8 @@ export = class Client {
     await delay(delays.setName); // delay
     await client.api.user.changeName(name);
     await client.api.tutorial.progress(1);
-    await client.api.getStartUpInformation();
-    await client.api.unitAllAndDeck();
+    await client.api.multi.getStartUpInformation();
+    await client.api.multi.unitAllAndDeck();
     let availableUnits: number[] = [];
     for (let unit of (await client.api.login.unitList()).response_data.unit_initial_set) {
       availableUnits.push(unit.unit_initial_set_id);
@@ -300,7 +338,7 @@ export = class Client {
     }
     await client.api.tutorial.skip();
     {
-      let result = (await client.api.unitAllAndDeck())["response_data"];
+      let result = (await client.api.multi.unitAllAndDeck())["response_data"];
       let base = result[0]["result"][0]["unit_owning_user_id"];
       let mergePartner = result[0]["result"][10]["unit_owning_user_id"];
       await client.api.unitMerge(base, mergePartner);
@@ -462,45 +500,45 @@ export = class Client {
           HTTPInterfaces.RequestData.tutorial.progress>("tutorial", "progress", { tutorial_state: state });
       },
       skip: async () => {
-        await this.performRequestDetailed("tutorial", "skip");
+        await this.performRequestDetailed<HTTPInterfaces.Response.tutorial.skip>("tutorial", "skip");
       }
     },
-    getStartUpInformation: async () => {
-      return await this.performMultipleRequest([
-        { module: "login", api: "topInfo" },
-        { module: "live", api: "liveStatus" },
-        { module: "live", api: "schedule" },
-        { module: "marathon", api: "marathonInfo" },
-        { module: "login", api: "topInfoOnce" },
-        { module: "unit", api: "unitAll" },
-        { module: "unit", api: "deckInfo" },
-        { module: "payment", api: "productList" },
-        { module: "scenario", api: "scenarioStatus" },
-        { module: "subscenario", api: "subscenarioStatus" },
-        { module: "user", api: "showAllItem" },
-        { module: "battle", api: "battleInfo" },
-        { module: "banner", api: "bannerList" },
-        { module: "notice", api: "noticeMarquee" },
-        { module: "festival", api: "festivalInfo" },
-        { module: "eventscenario", api: "status" },
-        { module: "navigation", api: "specialCutin" },
-        { module: "album", api: "albumAll" },
-        { module: "award", api: "awardInfo" },
-        { module: "background", api: "backgroundInfo" },
-        { module: "online", api: "info" },
-        { module: "challenge", api: "challengeInfo" }
-      ]);
-    },
-    unitAllAndDeck: async () => {
-      return await this.performMultipleRequest<{
-        response_data: {
-
-        };
-        status_code: number;
-      }[]>([
-        { module: "unit", api: "unitAll" },
-        { module: "unit", api: "deckInfo" }
-      ]);
+    multi: {
+      getStartUpInformation: async () => {
+        return await this.performMultipleRequest([
+          { module: "login", api: "topInfo" },
+          { module: "live", api: "liveStatus" },
+          { module: "live", api: "schedule" },
+          { module: "marathon", api: "marathonInfo" },
+          { module: "login", api: "topInfoOnce" },
+          { module: "unit", api: "unitAll" },
+          { module: "unit", api: "deckInfo" },
+          { module: "payment", api: "productList" },
+          { module: "scenario", api: "scenarioStatus" },
+          { module: "subscenario", api: "subscenarioStatus" },
+          { module: "user", api: "showAllItem" },
+          { module: "battle", api: "battleInfo" },
+          { module: "banner", api: "bannerList" },
+          { module: "notice", api: "noticeMarquee" },
+          { module: "festival", api: "festivalInfo" },
+          { module: "eventscenario", api: "status" },
+          { module: "navigation", api: "specialCutin" },
+          { module: "album", api: "albumAll" },
+          { module: "award", api: "awardInfo" },
+          { module: "background", api: "backgroundInfo" },
+          { module: "online", api: "info" },
+          { module: "challenge", api: "challengeInfo" }
+        ]);
+      },
+      unitAllAndDeck: async () => {
+        return await this.performMultipleRequest<[
+          HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.unitAll>,
+          HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.deckInfo>
+        ]>([
+          { module: "unit", api: "unitAll" },
+          { module: "unit", api: "deckInfo" }
+        ]);
+      }
     },
     unitMerge: async (base: number, partner: number) => {
       await this.performRequestDetailed("unit", "merge",
