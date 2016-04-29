@@ -15,14 +15,14 @@ let config = {
     "accept": "*/*",
     "time-zone": "JST",
     "api-model": "straightforward",
-    "client-version": "17.6",
+    "client-version": "17.9",
     "host": "prod-jp.lovelive.ge.klabgames.net",
     "os": "Android",
     "accept-encoding": "gzip,deflate",
     "debug": "1",
     "region": "392",
     "bundle-version": "3.2",
-    "os-version": "A0001 oneplus MSM8974 6.0.1",
+    "os-version": "Nexus 6 google shamu 5.0",
     "platform-type": "2"
   }
 };
@@ -653,7 +653,7 @@ export = class Client {
       }
     },
     multi: {
-      getStartUpInformation: async () => {
+      getStartUpInformation: async () => { // TODO type annotation
         return await this.performMultipleRequest([
           { module: "login", api: "topInfo" },
           { module: "live", api: "liveStatus" },
