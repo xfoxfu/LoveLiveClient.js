@@ -57,30 +57,35 @@ namespace HTTPInterfaces {
   /* tslint:disable:class-name */
   export namespace Response {
     export namespace login {
-      export interface authkey extends ResponseBase<{ authorize_token: string; }> { };
-      export interface login extends ResponseBase<{
+      export interface authkey {
+        authorize_token: string;
+      };
+      export interface login {
         authorize_token: string;
         user_id: number;
         review_version: string;
         server_timestamp: number;
-      }> { };
-      export interface startUp extends ResponseBase<{
+      };
+      export interface startUp {
         login_key: string;
         login_passwd: string;
         user_id: number;
-      }> { };
-      export interface startWithoutInvite extends ResponseBase<any[]> { };
-      export interface unitList extends ResponseBase<{
+      };
+      export interface startWithoutInvite extends Array<any> {
+      };
+      export interface unitList {
         unit_initial_set: {
           unit_initial_set_id: number;
           unit_list: number[];
           center_unit_id: number
         }[];
-      }> { };
-      export interface unitSelect extends ResponseBase<{ unit_id: number[] }> { };
+      };
+      export interface unitSelect {
+        unit_id: number[];
+      };
     };
     export namespace user {
-      export interface userInfo extends ResponseBase<{
+      export interface userInfo {
         user_id: number;
         name: string;
         level: number;
@@ -102,23 +107,27 @@ namespace HTTPInterfaces {
         insert_date: string; // 2016-04-01 19:32:46
         update_date: string; // 2016-04-01 19:32:46
         tutorial_state: number;
-      }> { };
-      export interface changeName extends ResponseBase<{
+      };
+      export interface changeName {
         before_name: string;
         after_name: string;
-      }> { };
+      };
     };
     export namespace tos {
-      export interface tosCheck extends ResponseBase<{
+      export interface tosCheck {
         tos_id: number;
         is_agreed: number;
-      }> { };
-      export interface tosAgree extends ResponseBase<any[]> { };
+      };
+      export interface tosAgree extends Array<any> {
+      };
     };
     export namespace tutorial {
-      export interface progress extends ResponseBase<any[]> { };
-      export interface skip extends ResponseBase<any[]> { };
+      export interface progress extends Array<any> {
+      };
+      export interface skip extends Array<any> {
+      };
     };
+
     export namespace unit {
       export interface unitAll extends Array<{
         unit_owning_user_id: number;
@@ -149,6 +158,134 @@ namespace HTTPInterfaces {
           unit_owning_user_id: number;
         }[]
       }> { };
+      export interface merge {
+        before: {
+          unit_owning_user_id: number;
+          unit_id: number;
+          exp: number;
+          next_exp: number;
+          level: number;
+          max_level: number;
+          rank: number;
+          max_rank: number;
+          love: number;
+          max_love: number;
+          unit_skill_level: number;
+          max_hp: number;
+          favorite_flag: boolean;
+          is_rank_max: boolean;
+          is_love_max: boolean;
+          is_level_max: boolean;
+        };
+        after: {
+          unit_owning_user_id: number;
+          unit_id: number;
+          exp: number;
+          next_exp: number;
+          level: number;
+          max_level: number;
+          rank: number;
+          max_rank: number;
+          love: number;
+          max_love: number;
+          unit_skill_level: number;
+          max_hp: number;
+          favorite_flag: boolean;
+          is_rank_max: boolean;
+          is_love_max: boolean;
+          is_level_max: boolean;
+        };
+        before_user_info: {
+          level: number;
+          exp: number;
+          next_exp: number;
+          game_coin: number;
+          sns_coin: number;
+          social_point: number;
+          unit_max: number;
+          energy_max: number;
+          friend_max: number;
+        };
+        after_user_info: {
+          level: number;
+          exp: number;
+          next_exp: number;
+          game_coin: number;
+          sns_coin: number;
+          social_point: number;
+          unit_max: number;
+          energy_max: number;
+          friend_max: number;
+        };
+        use_game_coin: number;
+        evolution_setting_id: number;
+        bonus_value: number;
+        open_subscenario_id: any; // TODO
+        get_exchange_point_list: any[]; // TODO
+      };
+      export interface rankUp {
+        before: {
+          unit_owning_user_id: number;
+          unit_id: number;
+          exp: number;
+          next_exp: number;
+          level: number;
+          max_level: number;
+          rank: number;
+          max_rank: number;
+          love: number;
+          max_love: number;
+          unit_skill_level: number;
+          max_hp: number;
+          favorite_flag: number;
+          is_rank_max: boolean;
+          is_love_max: boolean;
+          is_level_max: boolean;
+        };
+        after: {
+          unit_owning_user_id: number;
+          unit_id: number;
+          exp: number;
+          next_exp: number;
+          level: number;
+          max_level: number;
+          rank: number;
+          max_rank: number;
+          love: number;
+          max_love: number;
+          unit_skill_level: number;
+          max_hp: number;
+          favorite_flag: number;
+          is_rank_max: boolean;
+          is_love_max: boolean;
+          is_level_max: boolean;
+        };
+        before_user_info: {
+          level: number;
+          exp: number;
+          next_exp: number;
+          game_coin: number;
+          sns_coin: number;
+          social_point: number;
+          unit_max: number;
+          energy_max: number;
+          friend_max: number;
+        };
+        after_user_info: {
+          level: number;
+          exp: number;
+          next_exp: number;
+          game_coin: number;
+          sns_coin: number;
+          social_point: number;
+          unit_max: number;
+          energy_max: number;
+          friend_max: number;
+        };
+        use_game_coin: number;
+        open_subscenario_id: any; // TODO
+        get_exchange_point_list: any[]; // TODO
+      };
     };
   };
   export namespace RequestData {
@@ -178,6 +315,16 @@ namespace HTTPInterfaces {
     export namespace tutorial {
       export interface progress {
         tutorial_state: number;
+      };
+    };
+    export namespace unit {
+      export interface merge {
+        base_owning_unit_user_id: number;
+        unit_owning_user_ids: number[];
+      };
+      export interface rankUp {
+        base_owning_unit_user_id: number;
+        unit_owning_user_ids: number[];
       };
     };
   };
@@ -341,10 +488,10 @@ export = class Client {
       let result = (await client.api.multi.unitAllAndDeck())["response_data"];
       let base = result[0]["result"][0]["unit_owning_user_id"];
       let mergePartner = result[0]["result"][10]["unit_owning_user_id"];
-      await client.api.unitMerge(base, mergePartner);
+      await client.api.unit.merge(base, [mergePartner]);
       await client.api.tutorial.skip();
       let rankUpPartner = result[0]["result"][9]["unit_owning_user_id"];
-      await client.api.unitRankUp(base, rankUpPartner);
+      await client.api.unit.rankUp(base, [rankUpPartner]);
       await client.api.tutorial.skip();
     }
     return client;
@@ -401,11 +548,11 @@ export = class Client {
     let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
     return await result;
   }
-  private async performRequestPlain<TResult>(module: string, api: string): Promise<TResult> {
+  private async performRequestPlain<TResult>(module: string, api: string): Promise<HTTPInterfaces.ResponseBase<TResult>> {
     return await request(await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString()));
   }
-  private async performRequestDetailed<TResult>(module: string, api: string, data?: any): Promise<TResult>;
-  private async performRequestDetailed<TResult, TRequestData>(module: string, api: string, data: TRequestData): Promise<TResult>;
+  private async performRequestDetailed<TResult>(module: string, api: string, data?: any): Promise<HTTPInterfaces.ResponseBase<TResult>>;
+  private async performRequestDetailed<TResult, TRequestData>(module: string, api: string, data: TRequestData): Promise<HTTPInterfaces.ResponseBase<TResult>>;
   private async performRequestDetailed(module: string, api: string, data: any) {
     let dataToSend = merge(<HTTPInterfaces.DetailedRequestBase>{
       module: module,
@@ -415,7 +562,7 @@ export = class Client {
     }, data);
     return await request(await this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
   }
-  private async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]) {
+  private async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]): Promise<TResult> {
     let dataToSend: any[] = [];
     for (let request of requests) {
       dataToSend.push(merge({
@@ -439,7 +586,8 @@ export = class Client {
        * @return Promise<string>
        */
       authkey: async (): Promise<string> => {
-        let result: HTTPInterfaces.Response.login.authkey = await request(await Client.buildUpRequestOpt("login", "authkey", "1"));
+        let result: HTTPInterfaces.ResponseBase<HTTPInterfaces.Response.login.authkey> =
+          await request(await Client.buildUpRequestOpt("login", "authkey", "1"));
         return result.response_data.authorize_token;
       },
       /**
@@ -450,9 +598,10 @@ export = class Client {
        * @return Promise<string>
        */
       login: async () => {
-        let result: HTTPInterfaces.Response.login.login = await request(
-          await Client.buildUpRequestOpt("login", "login", "2",
-            { "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd }, await this.api.login.authkey()));
+        let result: HTTPInterfaces.ResponseBase<HTTPInterfaces.Response.login.login> =
+          await request(
+            await Client.buildUpRequestOpt("login", "login", "2",
+              { "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd }, await this.api.login.authkey()));
         return result.response_data;
       },
       startUp: async () => {
@@ -540,13 +689,19 @@ export = class Client {
         ]);
       }
     },
-    unitMerge: async (base: number, partner: number) => {
-      await this.performRequestDetailed("unit", "merge",
-        { "base_owning_unit_user_id": base, "unit_owning_user_ids": partner });
-    },
-    unitRankUp: async (base: number, partner: number) => {
-      await this.performRequestDetailed("unit", "rankUp",
-        { "base_owning_unit_user_id": base, "unit_owning_user_ids": partner });
+    unit: {
+      merge: async (base: number, partners: number[]) => {
+        await this.performRequestDetailed<HTTPInterfaces.Response.unit.merge,
+          HTTPInterfaces.RequestData.unit.merge>("unit", "merge",
+          { "base_owning_unit_user_id": base, "unit_owning_user_ids": partners });
+      },
+      rankUp: async (base: number, partners: number[]) => {
+        await this.performRequestDetailed<HTTPInterfaces.Response.unit.rankUp,
+          HTTPInterfaces.RequestData.unit.rankUp>("unit", "rankUp", {
+            base_owning_unit_user_id: base,
+            unit_owning_user_ids: partners
+          });
+      }
     },
     getLBonus: async () => {
       await this.performRequestDetailed("lbonus", "execute");
@@ -565,10 +720,7 @@ export = class Client {
     },
     checkIfConnected: async (): Promise<boolean> => {
       return (await this.performRequestDetailed<{
-        response_data: {
-          is_connected: boolean;
-        };
-        status_code: number;
+        is_connected: boolean;
       }>("platformAccount", "isConnectedLlAccount")).response_data.is_connected;
     },
     getTransferCode: async () => {
@@ -599,15 +751,47 @@ export = class Client {
     getLivePartyList: async (difficulty: number) => {
       difficulty = 3;
       return await this.performRequestDetailed<{
-        response_data: {
-          party_list: {
+        party_list: {
+          "user_info": {
+            "user_id": number;
+            "name": string;
+            "level": number;
+          };
+          "center_unit_info": {
+            "love": number;
+            "unit_id": number;
+            "level": number;
+            "smile": number;
+            "cute": number;
+            "cool": number;
+            "is_rank_max": boolean;
+            "is_love_max": boolean;
+            "is_level_max": boolean;
+            "max_hp": number;
+            "unit_skill_level": number;
+          };
+          "setting_award_id": number;
+          "available_social_point": number;
+          "friend_status": number;
+        }[];
+      }>("live", "partyList", { live_difficulty_id: difficulty });
+    },
+    getLiveDeckList: async (party_user_id: number) => {
+      return await this.performRequestDetailed<{
+        "unit_deck_list": {
+          "unit_deck_id": number;
+          "main_flag": boolean;
+          "deck_name": string;
+          "unit_list": {
+            "unit_owning_user_id": number;
+          }[];
+          "party_info": {
             "user_info": {
               "user_id": number;
               "name": string;
               "level": number;
             };
             "center_unit_info": {
-              "love": number;
               "unit_id": number;
               "level": number;
               "smile": number;
@@ -616,92 +800,51 @@ export = class Client {
               "is_rank_max": boolean;
               "is_love_max": boolean;
               "is_level_max": boolean;
-              "max_hp": number;
-              "unit_skill_level": number;
             };
             "setting_award_id": number;
-            "available_social_point": number;
-            "friend_status": number;
-          }[];
-        };
-        status_code: number;
-      }>("live", "partyList", { live_difficulty_id: difficulty });
-    },
-    getLiveDeckList: async (party_user_id: number) => {
-      return await this.performRequestDetailed<{
-        "response_data": {
-          "unit_deck_list": {
-            "unit_deck_id": number;
-            "main_flag": boolean;
-            "deck_name": string;
-            "unit_list": {
-              "unit_owning_user_id": number;
-            }[];
-            "party_info": {
-              "user_info": {
-                "user_id": number;
-                "name": string;
-                "level": number;
-              };
-              "center_unit_info": {
-                "unit_id": number;
-                "level": number;
-                "smile": number;
-                "cute": number;
-                "cool": number;
-                "is_rank_max": boolean;
-                "is_love_max": boolean;
-                "is_level_max": boolean;
-              };
-              "setting_award_id": number;
-            };
-            "subtotal_smile": number;
-            "subtotal_cute": number;
-            "subtotal_cool": number;
-            "subtotal_skill": number;
-            "subtotal_hp": number;
-            "total_smile": number;
-            "total_cute": number;
-            "total_cool": number;
-            "total_skill": number;
-            "total_hp": number;
-            "prepared_hp_damage": number;
-          }[];
-        };
-        "status_code": number;
+          };
+          "subtotal_smile": number;
+          "subtotal_cute": number;
+          "subtotal_cool": number;
+          "subtotal_skill": number;
+          "subtotal_hp": number;
+          "total_smile": number;
+          "total_cute": number;
+          "total_cool": number;
+          "total_skill": number;
+          "total_hp": number;
+          "prepared_hp_damage": number;
+        }[];
       }>("live", "deckList", { party_user_id: party_user_id });
     },
     // TODO find out how difficulty is calculated
     startLive: async (partyUserID: number, unitDeckID: number, liveDifficultyID: number) => {
       return await this.performRequestDetailed<{
-        "response_data": {
-          "rank_info": {
-            "rank": number;
-            "rank_min": number;
-            "rank_max": number;
+        "rank_info": {
+          "rank": number;
+          "rank_min": number;
+          "rank_max": number;
+        }[];
+        "live_info": {
+          "live_difficulty_id": number;
+          "is_random": boolean;
+          "dangerous": boolean;
+          "use_quad_point": boolean;
+          "notes_speed": boolean;
+          "notes_list": {
+            "timing_sec": number;
+            "notes_attribute": number;
+            "notes_level": number;
+            "effect": number;
+            "effect_value": number;
+            "position": number;
           }[];
-          "live_info": {
-            "live_difficulty_id": number;
-            "is_random": boolean;
-            "dangerous": boolean;
-            "use_quad_point": boolean;
-            "notes_speed": boolean;
-            "notes_list": {
-              "timing_sec": number;
-              "notes_attribute": number;
-              "notes_level": number;
-              "effect": number;
-              "effect_value": number;
-              "position": number;
-            }[];
-          }[];
-          "is_marathon_event": boolean;
-          "marathon_event_id": number;
-          "energy_full_time": string;
-          "over_max_energy": number;
-          "live_se_id": number;
-        };
-        "status_code": number;
+        }[];
+        "is_marathon_event": boolean;
+        "marathon_event_id": number;
+        "energy_full_time": string;
+        "over_max_energy": number;
+        "live_se_id": number;
       }>("live", "play", {
         live_difficulty_id: liveDifficultyID,
         party_user_id: partyUserID,
