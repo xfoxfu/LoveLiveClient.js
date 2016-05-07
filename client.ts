@@ -127,7 +127,6 @@ namespace HTTPInterfaces {
       export interface skip extends Array<any> {
       };
     };
-
     export namespace unit {
       export interface unitAll extends Array<{
         unit_owning_user_id: number;
@@ -287,6 +286,108 @@ namespace HTTPInterfaces {
         get_exchange_point_list: any[]; // TODO
       };
     };
+    export namespace lbonus {
+      export interface login {
+        login_count: number;
+        days_from_first_login: number;
+        before_lbonus_point: number;
+        after_lbonus_point: number;
+        last_login_date: string;
+        show_next_item: boolean;
+        items: {
+          point: {
+            incentive_id: number;
+            incentive_item_id: number;
+            amount: number;
+            add_type: number;
+          }[];
+        };
+        card_info: {
+          start_date: string;
+          end_date: string;
+          lbonus_count: number;
+          items: {
+            lbonus_point: number;
+            incentive_item_id: number;
+            amount: number;
+            add_type: number;
+          }[];
+        };
+        sheets: {
+          nlbonus_id: number;
+          nlbonus_item_num: number;
+          detail_text: string;
+          bg_asset: string;
+          show_next_item: boolean;
+          items: {
+            nlbonus_item_id: number;
+            seq: number;
+            amount: number;
+            add_type: number;
+            incentive_item_id: number;
+          }[];
+          get_item: {
+            amount: number;
+            add_type: number;
+            incentive_item_id: number;
+          };
+          stamp_num: number;
+        }[];
+        bushimo_reward_info: any[]; // TODO
+        accomplished_achievement_list: {
+          achievement_id: number;
+          count: number;
+          is_accomplished: boolean;
+          insert_date: string;
+          end_date: any; // TODO
+          remaining_time: string;
+          is_new: boolean;
+          for_display: boolean;
+          reward_list: {
+            item_id: number;
+            add_type: number;
+            amount: number;
+            item_category_id: number;
+            reward_box_flag: boolean;
+          }[];
+        }[];
+        new_achievement_cnt: number;
+        unaccomplished_achievement_cnt: number;
+        after_user_info: {
+          level: number;
+          exp: number;
+          previous_exp: number;
+          next_exp: number;
+          game_coin: number;
+          sns_coin: number;
+          free_sns_coin: number;
+          paid_sns_coin: number;
+          social_point: number;
+          unit_max: number;
+          current_energy: number;
+          energy_max: number;
+          energy_full_time: string;
+          over_max_energy: number;
+          friend_max: number;
+          tutorial_state: number;
+        };
+        added_achievement_list: any[]; // TODO
+      };
+    };
+    export namespace personalnotice {
+      export interface get {
+        has_notice: boolean;
+        notice_id: number;
+        type: number;
+        title: number;
+        contents: number;
+      };
+    };
+    export namespace platformAccount {
+      export interface isConnectedLlAccount {
+        is_connected: boolean;
+      };
+    };
   };
   export namespace RequestData {
     export namespace login {
@@ -417,10 +518,10 @@ export = class Client {
   async startGame(delays?: { tos?: number }) {
     await this.buildUpUserToken();
     await this.api.user.userInfo();
-    await this.api.getPersonalNotice();
+    await this.api.personalnotice.get();
     await this.tosCheckAndAgree(delays.tos); // delay
-    await this.api.checkIfConnected();
-    await this.api.getLBonus();
+    await this.api.platformAccount.isConnectedLlAccount();
+    await this.api.lbonus.execute();
     // TODO simulate webview
     await this.api.multi.getStartUpInformation();
   }
@@ -548,7 +649,7 @@ export = class Client {
     let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
     return await result;
   }
-  private async performRequestPlain<TResult>(module: string, api: string): Promise<HTTPInterfaces.ResponseBase<TResult>> {
+  private async performRequestWithCredital<TResult>(module: string, api: string): Promise<HTTPInterfaces.ResponseBase<TResult>> {
     return await request(await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString()));
   }
   private async performRequestDetailed<TResult>(module: string, api: string, data?: any): Promise<HTTPInterfaces.ResponseBase<TResult>>;
@@ -605,123 +706,93 @@ export = class Client {
         return result.response_data;
       },
       startUp: async () => {
-        let result = await this.performRequestPlain<HTTPInterfaces.Response.login.startUp>("login", "startUp");
+        let result = await this.performRequestWithCredital<HTTPInterfaces.Response.login.startUp>("login", "startUp");
         if (result["response_data"]["login_key"] !== this.user.loginKey ||
           result["response_data"]["login_passwd"] !== this.user.loginPasswd) {
           throw "Invaid api result: key or passwd mismatch";
         }
       },
-      startWithoutInvite: async () => {
-        await this.performRequestPlain<HTTPInterfaces.Response.login.startWithoutInvite>("login", "startWithoutInvite");
-      },
-      unitList: async () => {
-        return await this.performRequestDetailed<HTTPInterfaces.Response.login.unitList>("login", "unitList");
-      },
+      startWithoutInvite: async () => this.performRequestWithCredital<
+        HTTPInterfaces.Response.login.startWithoutInvite>("login", "startWithoutInvite"),
+      unitList: async () => this.performRequestDetailed<
+        HTTPInterfaces.Response.login.unitList>("login", "unitList"),
       // set the center of initial team
-      unitSelect: async (unitId: number) => {
-        await this.performRequestDetailed<HTTPInterfaces.Response.login.unitSelect,
-          HTTPInterfaces.RequestData.login.unitSelect>("login", "unitSelect", {
-            unit_initial_set_id: unitId
-          });
-      }
+      unitSelect: async (unitId: number) => this.performRequestDetailed<HTTPInterfaces.Response.login.unitSelect,
+        HTTPInterfaces.RequestData.login.unitSelect>("login", "unitSelect", {
+          unit_initial_set_id: unitId
+        })
     },
     user: {
-      userInfo: async () => {
-        return await this.performRequestDetailed<HTTPInterfaces.Response.user.userInfo>("user", "userInfo");
-      },
-      changeName: async (nickname: string) => {
-        return await this.performRequestDetailed<HTTPInterfaces.Response.user.changeName,
-          HTTPInterfaces.RequestData.user.changeName>("user", "changeName", { name: nickname });
-      }
+      userInfo: async () => this.performRequestDetailed<HTTPInterfaces.Response.user.userInfo>("user", "userInfo"),
+      changeName: async (nickname: string) => this.performRequestDetailed<HTTPInterfaces.Response.user.changeName,
+        HTTPInterfaces.RequestData.user.changeName>("user", "changeName", { name: nickname })
     },
     tos: {
-      tosCheck: async () => {
-        return await this.performRequestDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck");
-      },
-      tosAgree: async (tosId: number) => {
-        return await this.performRequestDetailed<HTTPInterfaces.Response.tos.tosAgree>("tos", "tosAgree", { tos_id: tosId });
-      }
+      tosCheck: async () => this.performRequestDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck"),
+      tosAgree: async (tosId: number) => this.performRequestDetailed<
+        HTTPInterfaces.Response.tos.tosAgree>("tos", "tosAgree", { tos_id: tosId })
     },
     tutorial: {
       // set state to 1 to skip it
-      progress: async (state: number) => {
-        await this.performRequestDetailed<HTTPInterfaces.Response.tutorial.progress,
-          HTTPInterfaces.RequestData.tutorial.progress>("tutorial", "progress", { tutorial_state: state });
-      },
-      skip: async () => {
-        await this.performRequestDetailed<HTTPInterfaces.Response.tutorial.skip>("tutorial", "skip");
-      }
+      progress: async (state: number) => this.performRequestDetailed<HTTPInterfaces.Response.tutorial.progress,
+        HTTPInterfaces.RequestData.tutorial.progress>("tutorial", "progress", { tutorial_state: state }),
+      skip: async () => this.performRequestDetailed<HTTPInterfaces.Response.tutorial.skip>("tutorial", "skip")
     },
     multi: {
-      getStartUpInformation: async () => { // TODO type annotation
-        return await this.performMultipleRequest([
-          { module: "login", api: "topInfo" },
-          { module: "live", api: "liveStatus" },
-          { module: "live", api: "schedule" },
-          { module: "marathon", api: "marathonInfo" },
-          { module: "login", api: "topInfoOnce" },
-          { module: "unit", api: "unitAll" },
-          { module: "unit", api: "deckInfo" },
-          { module: "payment", api: "productList" },
-          { module: "scenario", api: "scenarioStatus" },
-          { module: "subscenario", api: "subscenarioStatus" },
-          { module: "user", api: "showAllItem" },
-          { module: "battle", api: "battleInfo" },
-          { module: "banner", api: "bannerList" },
-          { module: "notice", api: "noticeMarquee" },
-          { module: "festival", api: "festivalInfo" },
-          { module: "eventscenario", api: "status" },
-          { module: "navigation", api: "specialCutin" },
-          { module: "album", api: "albumAll" },
-          { module: "award", api: "awardInfo" },
-          { module: "background", api: "backgroundInfo" },
-          { module: "online", api: "info" },
-          { module: "challenge", api: "challengeInfo" }
-        ]);
-      },
-      unitAllAndDeck: async () => {
-        return await this.performMultipleRequest<[
-          HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.unitAll>,
-          HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.deckInfo>
-        ]>([
-          { module: "unit", api: "unitAll" },
-          { module: "unit", api: "deckInfo" }
-        ]);
-      }
+      getStartUpInformation: async () => this.performMultipleRequest([ // TODO type annotation
+        { module: "login", api: "topInfo" },
+        { module: "live", api: "liveStatus" },
+        { module: "live", api: "schedule" },
+        { module: "marathon", api: "marathonInfo" },
+        { module: "login", api: "topInfoOnce" },
+        { module: "unit", api: "unitAll" },
+        { module: "unit", api: "deckInfo" },
+        { module: "payment", api: "productList" },
+        { module: "scenario", api: "scenarioStatus" },
+        { module: "subscenario", api: "subscenarioStatus" },
+        { module: "user", api: "showAllItem" },
+        { module: "battle", api: "battleInfo" },
+        { module: "banner", api: "bannerList" },
+        { module: "notice", api: "noticeMarquee" },
+        { module: "festival", api: "festivalInfo" },
+        { module: "eventscenario", api: "status" },
+        { module: "navigation", api: "specialCutin" },
+        { module: "album", api: "albumAll" },
+        { module: "award", api: "awardInfo" },
+        { module: "background", api: "backgroundInfo" },
+        { module: "online", api: "info" },
+        { module: "challenge", api: "challengeInfo" }
+      ]),
+      unitAllAndDeck: async () => await this.performMultipleRequest<[
+        HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.unitAll>,
+        HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.deckInfo>
+      ]>([
+        { module: "unit", api: "unitAll" },
+        { module: "unit", api: "deckInfo" }
+      ])
     },
     unit: {
-      merge: async (base: number, partners: number[]) => {
-        await this.performRequestDetailed<HTTPInterfaces.Response.unit.merge,
-          HTTPInterfaces.RequestData.unit.merge>("unit", "merge",
-          { "base_owning_unit_user_id": base, "unit_owning_user_ids": partners });
-      },
-      rankUp: async (base: number, partners: number[]) => {
-        await this.performRequestDetailed<HTTPInterfaces.Response.unit.rankUp,
-          HTTPInterfaces.RequestData.unit.rankUp>("unit", "rankUp", {
-            base_owning_unit_user_id: base,
-            unit_owning_user_ids: partners
-          });
-      }
+      merge: async (base: number, partners: number[]) => this.performRequestDetailed<
+        HTTPInterfaces.Response.unit.merge,
+        HTTPInterfaces.RequestData.unit.merge>("unit", "merge",
+        { base_owning_unit_user_id: base, unit_owning_user_ids: partners }),
+      rankUp: async (base: number, partners: number[]) => this.performRequestDetailed<
+        HTTPInterfaces.Response.unit.rankUp,
+        HTTPInterfaces.RequestData.unit.rankUp>("unit", "rankUp", {
+          base_owning_unit_user_id: base,
+          unit_owning_user_ids: partners
+        })
     },
-    getLBonus: async () => {
-      await this.performRequestDetailed("lbonus", "execute");
+    lbonus: {
+      execute: async () => this.performRequestDetailed<HTTPInterfaces.Response.lbonus.login>("lbonus", "execute")
     },
-    getPersonalNotice: async () => {
-      return await this.performRequestDetailed<{
-        response_data: {
-          "has_notice": boolean;
-          "notice_id": number;
-          "type": number;
-          "title": number;
-          "contents": number;
-        };
-        status_code: number;
-      }>("personalnotice", "get");
+    personalnotice: {
+      get: async () => this.performRequestDetailed<
+        HTTPInterfaces.Response.personalnotice.get>("personalnotice", "get")
     },
-    checkIfConnected: async (): Promise<boolean> => {
-      return (await this.performRequestDetailed<{
-        is_connected: boolean;
-      }>("platformAccount", "isConnectedLlAccount")).response_data.is_connected;
+    platformAccount: {
+      isConnectedLlAccount: async () => this.performRequestDetailed<
+        HTTPInterfaces.Response.platformAccount.isConnectedLlAccount>("platformAccount", "isConnectedLlAccount")
     },
     getTransferCode: async () => {
       return (await this.performRequestDetailed<{
