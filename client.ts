@@ -388,6 +388,246 @@ namespace HTTPInterfaces {
         is_connected: boolean;
       };
     };
+    export namespace handover {
+      interface code {
+        code: string;
+        expire_date: string;
+      };
+      export interface start extends code { };
+      export interface renew extends code { };
+    };
+    export namespace live {
+      export interface partyList {
+        party_list: {
+          user_info: {
+            user_id: number;
+            name: string;
+            level: number;
+          };
+          center_unit_info: {
+            love: number;
+            unit_id: number;
+            level: number;
+            smile: number;
+            cute: number;
+            cool: number;
+            is_rank_max: boolean;
+            is_love_max: boolean;
+            is_level_max: boolean;
+            max_hp: number;
+            unit_skill_level: number;
+          };
+          setting_award_id: number;
+          available_social_point: number;
+          friend_status: number;
+        }[];
+      };
+      export interface deckList {
+        unit_deck_list: {
+          unit_deck_id: number;
+          main_flag: boolean;
+          deck_name: string;
+          unit_list: {
+            unit_owning_user_id: number;
+          }[];
+          party_info: {
+            user_info: {
+              user_id: number;
+              name: string;
+              level: number;
+            };
+            center_unit_info: {
+              unit_id: number;
+              level: number;
+              smile: number;
+              cute: number;
+              cool: number;
+              is_rank_max: boolean;
+              is_love_max: boolean;
+              is_level_max: boolean;
+            };
+            setting_award_id: number;
+          };
+          subtotal_smile: number;
+          subtotal_cute: number;
+          subtotal_cool: number;
+          subtotal_skill: number;
+          subtotal_hp: number;
+          total_smile: number;
+          total_cute: number;
+          total_cool: number;
+          total_skill: number;
+          total_hp: number;
+          prepared_hp_damage: number;
+        }[];
+      };
+      export interface play {
+        rank_info: {
+          rank: number;
+          rank_min: number;
+          rank_max: number;
+        }[];
+        live_info: {
+          live_difficulty_id: number;
+          is_random: boolean;
+          dangerous: boolean;
+          use_quad_point: boolean;
+          notes_speed: boolean;
+          notes_list: {
+            timing_sec: number;
+            notes_attribute: number;
+            notes_level: number;
+            effect: number;
+            effect_value: number;
+            position: number;
+          }[];
+        }[];
+        is_marathon_event: boolean;
+        marathon_event_id: number;
+        energy_full_time: string;
+        over_max_energy: number;
+        live_se_id: number;
+      };
+      export interface reward {
+        live_info: {
+          live_difficulty_id: number;
+          is_random: boolean;
+          dangerous: boolean;
+          use_quad_point: boolean;
+        }[];
+        rank: number;
+        combo_rank: number;
+        total_love: number;
+        is_high_score: boolean;
+        hi_score: number;
+        base_reward_info: {
+          player_exp: number;
+          player_exp_unit_max: {
+            before: number;
+            after: number;
+          };
+          player_exp_friend_max: {
+            before: number;
+            after: number;
+          };
+          player_exp_lp_max: {
+            before: number;
+            after: number;
+          };
+          game_coin: number;
+          game_coin_reward_box_flag: boolean;
+          social_point: number;
+        };
+        reward_unit_list: {
+          live_clear: {
+            add_type: number;
+            unit_id: number;
+            unit_owning_user_id: any; // TODO
+            exp: number;
+            next_exp: number;
+            max_hp: number;
+            level: number;
+            skill_level: number;
+            rank: number;
+            love: number;
+            is_rank_max: boolean;
+            is_level_max: boolean;
+            is_love_max: boolean;
+            new_unit_flag: boolean;
+            reward_box_flag: boolean;
+          }[];
+          live_rank: {
+            add_type: number;
+            unit_id: number;
+            unit_owning_user_id: any; // TODO
+            exp: number;
+            next_exp: number;
+            max_hp: number;
+            level: number;
+            skill_level: number;
+            rank: number;
+            love: number;
+            is_rank_max: boolean;
+            is_level_max: boolean;
+            is_love_max: boolean;
+            new_unit_flag: boolean;
+            reward_box_flag: boolean;
+          }[];
+          live_combo: {
+            add_type: number;
+            unit_id: number;
+            unit_owning_user_id: any; // TODO
+            exp: number;
+            next_exp: number;
+            max_hp: number;
+            level: number;
+            skill_level: number;
+            rank: number;
+            love: number;
+            is_rank_max: boolean;
+            is_level_max: boolean;
+            is_love_max: boolean;
+            new_unit_flag: boolean;
+            reward_box_flag: boolean;
+          }[];
+        };
+        unlocked_subscenario_ids: any[]; // TODO
+        unit_list: {
+          unit_owning_user_id: number;
+          unit_id: number;
+          position: number;
+          level: number;
+          unit_skill_level: number;
+          before_love: number;
+          love: number;
+          max_love: number;
+          is_rank_max: boolean;
+          is_love_max: boolean;
+          is_level_max: boolean
+        }[];
+        before_user_info: {
+          level: number;
+          exp: number;
+          previous_exp: number;
+          next_exp: number;
+          game_coin: number;
+          sns_coin: number;
+          social_point: number;
+          unit_max: number;
+          energy_max: number;
+          friend_max: number;
+          tutorial_state: number;
+          energy_full_time: string;
+          over_max_energy: number;
+        };
+        after_user_info: {
+          level: number;
+          exp: number;
+          previous_exp: number;
+          next_exp: number;
+          game_coin: number;
+          sns_coin: number;
+          social_point: number;
+          unit_max: number;
+          energy_max: number;
+          friend_max: number;
+          tutorial_state: number;
+          energy_full_time: string;
+          over_max_energy: number;
+        };
+        next_level_info: {
+          level: number;
+          from_exp: number
+        }[];
+        goal_accomp_info: {
+          achieved_ids: any[]; // TODO
+          rewards: any[];
+        };
+        special_reward_info: any[];
+        event_info: any[];
+        daily_reward_info: any[];
+      };
+    };
   };
   export namespace RequestData {
     export namespace login {
@@ -527,18 +767,18 @@ export = class Client {
   }
   async generateTransferCode() {
     // TODO validate expiration
-    return await this.api.getTransferCode();
+    return (await this.api.handover.start()).response_data;
   }
   async regenerateTransferCode() {
-    return await this.api.renewTransferCode();
+    return (await this.api.handover.renew()).response_data;
   }
   async playSong(interval?: number) {
     if (!interval) interval = 0;
-    let parties = await this.api.getLivePartyList(3);
-    let decks = await this.api.getLiveDeckList(parties.response_data.party_list[0].user_info.user_id);
-    let songInfo = await this.api.startLive(parties.response_data.party_list[0].user_info.user_id, 1, 3);
+    let parties = await this.api.live.partyList(3);
+    let decks = await this.api.live.deckList(parties.response_data.party_list[0].user_info.user_id);
+    let songInfo = await this.api.live.play(parties.response_data.party_list[0].user_info.user_id, 1, 3);
     await delay(interval);
-    return await this.api.getLiveReward(143, 38, 0, 0, 0,
+    return await this.api.live.reward(143, 38, 0, 0, 0,
       35, 181, 3,
       25684, 0, 0,
       songInfo.response_data.is_marathon_event ? songInfo.response_data.marathon_event_id : 0,
@@ -609,7 +849,7 @@ export = class Client {
     await client.api.user.userInfo();
     await client.tosCheckAndAgree(delays.tos); // delay
     await delay(delays.code); // delay
-    let result = await client.api.applyTransferCode(code);
+    let result = (await client.api.handover.exec(code)).status_code;
     if (result !== 200) {
       throw "Invaid transfer code!";
     }
@@ -794,154 +1034,52 @@ export = class Client {
       isConnectedLlAccount: async () => this.performRequestDetailed<
         HTTPInterfaces.Response.platformAccount.isConnectedLlAccount>("platformAccount", "isConnectedLlAccount")
     },
-    getTransferCode: async () => {
-      return (await this.performRequestDetailed<{
-        response_data: {
-          code: string;
-          expire_date: string;
-        };
-        status_code: number;
-      }>("handover", "start")).response_data;
+    handover: {
+      start: async () => this.performRequestDetailed<
+        HTTPInterfaces.Response.handover.start>("handover", "start"),
+      exec: async (code: string) => this.performRequestDetailed("handover", "exec", {
+        handover: code
+      }),
+      renew: async () => this.performRequestDetailed<
+        HTTPInterfaces.Response.handover.renew>("handover", "renew"),
     },
-    applyTransferCode: async (code: string) => {
-      return (await this.performRequestDetailed<{
-        response_data: any;
-        status_code: number;
-      }>("handover", "exec", { handover: code })).status_code;
+    live: {
+      // get available accompany friends list
+      partyList: async (songId: number) => this.performRequestDetailed<
+        HTTPInterfaces.Response.live.partyList>("live", "partyList", {
+          live_difficulty_id: songId
+        }),
+      deckList: async (accompanyFriendId: number) => this.performRequestDetailed<
+        HTTPInterfaces.Response.live.deckList>("live", "deckList", {
+          party_user_id: accompanyFriendId
+        }),
+      play: async (songId: number, accompanyFriendId: number, deckId: number) =>
+        this.performRequestDetailed<HTTPInterfaces.Response.live.play>("live", "play", {
+          live_difficulty_id: songId,
+          party_user_id: accompanyFriendId,
+          unit_deck_id: deckId
+        }),
+      reward: async (
+        perfect: number, great: number, good: number, bad: number, miss: number,
+        love: number, maxCombo: number, liveDifficultyID: number,
+        smile: number, cute: number, cool: number,
+        eventID: number, eventPoint: number) => {
+        return await this.performRequestDetailed("live", "reward", {
+          "good_cnt": good,
+          "miss_cnt": miss,
+          "great_cnt": great,
+          "love_cnt": love, // bond pt
+          "max_combo": maxCombo,
+          "score_smile": smile,
+          "perfect_cnt": perfect,
+          "bad_cnt": bad,
+          "event_point": eventPoint,
+          "live_difficulty_id": liveDifficultyID,
+          "score_cute": cute,
+          "score_cool": cool,
+          "event_id": eventID
+        });
+      }
     },
-    renewTransferCode: async () => {
-      return (await this.performRequestDetailed<{
-        response_data: {
-          code: string;
-          expire_date: string;
-        };
-        status_code: number;
-      }>("handover", "renew")).response_data;
-    },
-    // TODO find out how difficulty is calculated
-    getLivePartyList: async (difficulty: number) => {
-      difficulty = 3;
-      return await this.performRequestDetailed<{
-        party_list: {
-          "user_info": {
-            "user_id": number;
-            "name": string;
-            "level": number;
-          };
-          "center_unit_info": {
-            "love": number;
-            "unit_id": number;
-            "level": number;
-            "smile": number;
-            "cute": number;
-            "cool": number;
-            "is_rank_max": boolean;
-            "is_love_max": boolean;
-            "is_level_max": boolean;
-            "max_hp": number;
-            "unit_skill_level": number;
-          };
-          "setting_award_id": number;
-          "available_social_point": number;
-          "friend_status": number;
-        }[];
-      }>("live", "partyList", { live_difficulty_id: difficulty });
-    },
-    getLiveDeckList: async (party_user_id: number) => {
-      return await this.performRequestDetailed<{
-        "unit_deck_list": {
-          "unit_deck_id": number;
-          "main_flag": boolean;
-          "deck_name": string;
-          "unit_list": {
-            "unit_owning_user_id": number;
-          }[];
-          "party_info": {
-            "user_info": {
-              "user_id": number;
-              "name": string;
-              "level": number;
-            };
-            "center_unit_info": {
-              "unit_id": number;
-              "level": number;
-              "smile": number;
-              "cute": number;
-              "cool": number;
-              "is_rank_max": boolean;
-              "is_love_max": boolean;
-              "is_level_max": boolean;
-            };
-            "setting_award_id": number;
-          };
-          "subtotal_smile": number;
-          "subtotal_cute": number;
-          "subtotal_cool": number;
-          "subtotal_skill": number;
-          "subtotal_hp": number;
-          "total_smile": number;
-          "total_cute": number;
-          "total_cool": number;
-          "total_skill": number;
-          "total_hp": number;
-          "prepared_hp_damage": number;
-        }[];
-      }>("live", "deckList", { party_user_id: party_user_id });
-    },
-    // TODO find out how difficulty is calculated
-    startLive: async (partyUserID: number, unitDeckID: number, liveDifficultyID: number) => {
-      return await this.performRequestDetailed<{
-        "rank_info": {
-          "rank": number;
-          "rank_min": number;
-          "rank_max": number;
-        }[];
-        "live_info": {
-          "live_difficulty_id": number;
-          "is_random": boolean;
-          "dangerous": boolean;
-          "use_quad_point": boolean;
-          "notes_speed": boolean;
-          "notes_list": {
-            "timing_sec": number;
-            "notes_attribute": number;
-            "notes_level": number;
-            "effect": number;
-            "effect_value": number;
-            "position": number;
-          }[];
-        }[];
-        "is_marathon_event": boolean;
-        "marathon_event_id": number;
-        "energy_full_time": string;
-        "over_max_energy": number;
-        "live_se_id": number;
-      }>("live", "play", {
-        live_difficulty_id: liveDifficultyID,
-        party_user_id: partyUserID,
-        unit_deck_id: unitDeckID
-      });
-    },
-    getLiveReward: async (
-      perfect: number, great: number, good: number, bad: number, miss: number,
-      love: number, maxCombo: number, liveDifficultyID: number,
-      smile: number, cute: number, cool: number,
-      eventID: number, eventPoint: number) => {
-      return await this.performRequestDetailed("live", "reward", {
-        "good_cnt": good,
-        "miss_cnt": miss,
-        "great_cnt": great,
-        "love_cnt": love, // bond pt
-        "max_combo": maxCombo,
-        "score_smile": smile,
-        "perfect_cnt": perfect,
-        "bad_cnt": bad,
-        "event_point": eventPoint,
-        "live_difficulty_id": liveDifficultyID,
-        "score_cute": cute,
-        "score_cool": cool,
-        "event_id": eventID
-      });
-    }
   };
 };
