@@ -1,2 +1,2 @@
-import Client = require("./client");
-export = Client;
+import main = require("./client");
+export = main;

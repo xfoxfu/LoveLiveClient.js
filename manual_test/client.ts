@@ -3,10 +3,10 @@
 import chai = require("chai");
 const expect = chai.expect;
 const utils = require("utility");
-import Client = require("../");
+import llsifclient = require("../");
+const Client = llsifclient.getClientClass(require("./config.json")["client_config"]);
 
 (async () => {
-  Client.setConfig(require("./config.json")["client_config"]);
   let client = await Client.register();
   console.log(client.user);
   await client.startGame();

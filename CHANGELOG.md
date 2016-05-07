@@ -4,7 +4,17 @@ CHANGELOG
 0.2
 -----
 
-Current Stage: `prealpha`
+Current Stage: `prealpha4`
+
+** enhanced client config **
+
+Use the following codes to get a Client class:
+
+```ts
+import * as llsifclient = require("llsifclient");
+const Client = llsifclient.getClientClass(......); // get a constructor
+const client = new Client(......); // get an instance
+```
 
 ** support delays to simulate real actions on devices **
 
