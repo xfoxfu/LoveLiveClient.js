@@ -3,6 +3,11 @@ Node-LLSIFClient
 
 *Love Live! School Idol Festival* client in Node.js.
 
+System Requirements
+-----
+
+**Node.js** >6.0 or with babel
+
 API
 -----
 

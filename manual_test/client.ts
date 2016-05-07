@@ -4,7 +4,10 @@ import chai = require("chai");
 const expect = chai.expect;
 const utils = require("utility");
 import llsifclient = require("../");
-const Client = llsifclient.getClientClass(require("./config.json")["client_config"]);
+const config = require("./config.json");
+config["client_config"]["calculateHash"] =
+  llsifclient.predefinedFunctions.calculateHash.LLMCG(config["client_config"]["llmcg_token"]);
+const Client = llsifclient.getClientClass(config["client_config"]);
 
 (async () => {
   let client = await Client.register();

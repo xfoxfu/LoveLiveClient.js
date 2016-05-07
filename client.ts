@@ -1,11 +1,11 @@
 /// <reference path="./references.d.ts" />
 
-import crypto = require("crypto");
 import request = require("request-promise");
 import * as Request from "request";
 const utils = require("utility");
 import uuid = require("node-uuid");
 import merge = require("merge");
+import crypto = require("crypto-promise");
 
 namespace lib {
   export let randomInt = (min: number, max: number) => (Math.floor(Math.random() * (max - min)) + min);
@@ -653,8 +653,9 @@ export namespace HTTPInterfaces {
   };
   /* tslint:enable */
 }
+interface ICalculateHashFunction { (data: string): Promise<string>; };
 export interface IConfig {
-  llmcg_token: string;
+  calculateHash: ICalculateHashFunction;
   headers: {
     "Application-ID": string;
     Accept: string;
@@ -674,8 +675,24 @@ export interface IConfig {
     "X-Message-Code"?: string;
   };
 };
+export namespace predefinedFunctions {
+  export namespace calculateHash {
+    export let LLMCG = (token: string): ICalculateHashFunction => (async (data: string) => (await request({
+      url: "http://llmcg.xfox.pw/api",
+      json: true,
+      method: "POST",
+      body: {
+        data: data,
+        token: token
+      }
+    }))["X-Message-Code"]);
+    export let withKey = (key: string): ICalculateHashFunction => (
+      async (data: string) => await crypto.hmac("sha1", key)(data, "utf8").toString("hex")
+    );
+  };
+};
 export let getClientClass = (config: IConfig = {
-  llmcg_token: "xxxxxxx",
+  calculateHash: (data: string) => Promise.resolve(data),
   headers: {
     "Application-ID": "626776655",
     Accept: "*/*",
@@ -702,15 +719,7 @@ export let getClientClass = (config: IConfig = {
       } else {
         plainText = JSON.stringify(data);
       }
-      return (await request({
-        url: "http://llmcg.xfox.pw/api",
-        json: true,
-        method: "POST",
-        body: {
-          data: plainText,
-          token: config.llmcg_token
-        }
-      }))["X-Message-Code"];
+      return await config.calculateHash(plainText);
     };
     private static async buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
       return await Client.buildUpRequestOptPlain(`${module}/${api}`, nonce, data, token, customHeaders);
@@ -783,7 +792,7 @@ export let getClientClass = (config: IConfig = {
      * create user
      */
     private static generateCreditalPair(): [string, string] {
-      return [uuid.v4(), crypto.createHash("sha512").update([uuid.v4(), Date.now()].toString()).digest("hex")];
+      return [uuid.v4(), crypto.hash("sha512")([uuid.v4(), Date.now()].toString()).toString("hex")];
     }
     // When Node.js adapts to v8 shipped with Chrome 49, use this line instead of the following 3 lines.
     // static async register(name = "Node-LLSIFClient", leader = 1): Promise<Client> {
