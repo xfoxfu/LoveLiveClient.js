@@ -6,6 +6,7 @@ const utils = require("utility");
 import uuid = require("node-uuid");
 import merge = require("merge");
 import crypto = require("crypto-promise");
+const RequestErrors = require("request-promise/errors");
 
 namespace lib {
   export let randomInt = (min: number, max: number) => (Math.floor(Math.random() * (max - min)) + min);
@@ -658,6 +659,7 @@ interface IDelayFunction { (apiAddr: string): Promise<any>; };
 export interface IConfig {
   calculateHash: ICalculateHashFunction;
   delay: IDelayFunction;
+  maxRetry: number;
   headers: {
     "Application-ID": string;
     Accept: string;
@@ -744,9 +746,30 @@ export namespace predefinedFunctions {
     };
   }
 };
+export namespace Errors {
+  export class ApiError extends Error {
+    httpCode: number;
+    apiCode: number;
+    request: Request.Options;
+    constructor(httpStatus: number, apiStatus: number, requestOptions: Request.Options) {
+      super(`API Error with HTTP Status "${httpStatus}" and API Status "${apiStatus}"`);
+      this.name = "APIError";
+      this.httpCode = httpStatus;
+      this.apiCode = apiStatus;
+      this.request = requestOptions;
+    };
+  };
+  export class ClientNotInitializedError extends Error {
+    constructor() {
+      super("Client not initialized.");
+      this.name = "ClientNotInitializedError";
+    }
+  };
+};
 export let getClientClass = (config: IConfig = {
   calculateHash: (data: string) => Promise.resolve(data),
   delay: predefinedFunctions.delay.fastest,
+  maxRetry: 10,
   headers: {
     "Application-ID": "626776655",
     Accept: "*/*",
@@ -765,6 +788,7 @@ export let getClientClass = (config: IConfig = {
 }) => {
   if (!config.calculateHash) config.calculateHash = (data: string) => Promise.resolve(data);
   if (!config.delay) config.delay = predefinedFunctions.delay.fastest;
+  if (!config.maxRetry) config.maxRetry = 10;
   return class Client {
     /**
      * basic functions
@@ -800,6 +824,23 @@ export let getClientClass = (config: IConfig = {
       }
       return result;
     };
+    private static async request<T>(options: Request.Options): Promise<T> {
+      for (let i = 1; i <= config.maxRetry; i++) {
+        try {
+          let result: HTTPInterfaces.ResponseBase<T> = await request(options);
+          return result.response_data;
+        } catch (err) {
+          if (err.name = "RequestError") {
+          } else if (err.name === "StatusCodeError") {
+            if (!((err.statusCode >= 502) && (err.statusCode <= 504))) {
+              throw new Errors.ApiError(err.statusCode, 0, options);
+            }
+          } else {
+            throw err;
+          }
+        }
+      }
+    }
     /**
      * instance properties
      */
@@ -834,8 +875,7 @@ export let getClientClass = (config: IConfig = {
     async regenerateTransferCode() {
       return (await this.api.handover.renew()).response_data;
     }
-    async playSong(interval?: number) {
-      if (!interval) interval = 0;
+    async playSong() {
       let parties = await this.api.live.partyList(3);
       let decks = await this.api.live.deckList(parties.response_data.party_list[0].user_info.user_id);
       let songInfo = await this.api.live.play(parties.response_data.party_list[0].user_info.user_id, 1, 3);
@@ -917,8 +957,8 @@ export let getClientClass = (config: IConfig = {
     }
     async tosCheckAndAgree() {
       let tosCheckResult = await this.api.tos.tosCheck();
-      if (!tosCheckResult["response_data"]["is_agreed"]) {
-        await this.api.tos.tosAgree(tosCheckResult["response_data"]["tos_id"]);
+      if (!tosCheckResult.response_data.is_agreed) {
+        await this.api.tos.tosAgree(tosCheckResult.response_data.tos_id);
       }
     }
     /**
@@ -926,7 +966,7 @@ export let getClientClass = (config: IConfig = {
      */
     private async buildUpRequestOptWithCredital<TRequest>(module: string, api: string, nonce: string): Promise<Request.Options> {
       if ((!this.user.loginKey) && (!this.user.loginPasswd) && (!this.user.token)) {
-        throw "Client not initialized!";
+        throw new Errors.ClientNotInitializedError();
       }
       let data = {
         login_key: this.user.loginKey,
@@ -937,26 +977,28 @@ export let getClientClass = (config: IConfig = {
     }
     private async buildUpRequestOptPlain<TRequest>(module: string, api: string, nonce: string, data: TRequest): Promise<Request.Options> {
       if (!this.user.token) {
-        throw "Client not initialized!";
+        throw new Errors.ClientNotInitializedError();
       }
       let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
       return await result;
     }
-    private async performRequestWithCredital<TResult>(module: string, api: string): Promise<HTTPInterfaces.ResponseBase<TResult>> {
-      return await request(await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString()));
+    private async requestWithCredital<TResult>(module: string, api: string): Promise<HTTPInterfaces.ResponseBase<TResult>> {
+      return await Client.request<HTTPInterfaces.ResponseBase<TResult>>(
+        await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString())
+      );
     }
-    private async performRequestDetailed<TResult>(module: string, api: string, data?: any): Promise<HTTPInterfaces.ResponseBase<TResult>>;
-    private async performRequestDetailed<TResult, TRequestData>(module: string, api: string, data: TRequestData): Promise<HTTPInterfaces.ResponseBase<TResult>>;
-    private async performRequestDetailed(module: string, api: string, data: any) {
+    async requestDetailed<TResult>(module: string, api: string, data?: any): Promise<HTTPInterfaces.ResponseBase<TResult>>;
+    async requestDetailed<TResult, TRequestData>(module: string, api: string, data: TRequestData): Promise<HTTPInterfaces.ResponseBase<TResult>>;
+    async requestDetailed(module: string, api: string, data: any) {
       let dataToSend = merge(<HTTPInterfaces.DetailedRequestBase>{
         module: module,
         action: api,
         timeStamp: utils.timestamp().toString(),
         commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce++}`
       }, data);
-      return await request(await this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
+      return await Client.request(await this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
     }
-    private async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]): Promise<TResult> {
+    async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]): Promise<TResult> {
       let dataToSend: any[] = [];
       for (let request of requests) {
         dataToSend.push(merge({
@@ -999,37 +1041,37 @@ export let getClientClass = (config: IConfig = {
           return result.response_data;
         },
         startUp: async () => {
-          let result = await this.performRequestWithCredital<HTTPInterfaces.Response.login.startUp>("login", "startUp");
+          let result = await this.requestWithCredital<HTTPInterfaces.Response.login.startUp>("login", "startUp");
           if (result["response_data"]["login_key"] !== this.user.loginKey ||
             result["response_data"]["login_passwd"] !== this.user.loginPasswd) {
             throw "Invaid api result: key or passwd mismatch";
           }
         },
-        startWithoutInvite: async () => this.performRequestWithCredital<
+        startWithoutInvite: async () => this.requestWithCredital<
           HTTPInterfaces.Response.login.startWithoutInvite>("login", "startWithoutInvite"),
-        unitList: async () => this.performRequestDetailed<
+        unitList: async () => this.requestDetailed<
           HTTPInterfaces.Response.login.unitList>("login", "unitList"),
         // set the center of initial team
-        unitSelect: async (unitId: number) => this.performRequestDetailed<HTTPInterfaces.Response.login.unitSelect,
+        unitSelect: async (unitId: number) => this.requestDetailed<HTTPInterfaces.Response.login.unitSelect,
           HTTPInterfaces.RequestData.login.unitSelect>("login", "unitSelect", {
             unit_initial_set_id: unitId
           })
       },
       user: {
-        userInfo: async () => this.performRequestDetailed<HTTPInterfaces.Response.user.userInfo>("user", "userInfo"),
-        changeName: async (nickname: string) => this.performRequestDetailed<HTTPInterfaces.Response.user.changeName,
+        userInfo: async () => this.requestDetailed<HTTPInterfaces.Response.user.userInfo>("user", "userInfo"),
+        changeName: async (nickname: string) => this.requestDetailed<HTTPInterfaces.Response.user.changeName,
           HTTPInterfaces.RequestData.user.changeName>("user", "changeName", { name: nickname })
       },
       tos: {
-        tosCheck: async () => this.performRequestDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck"),
-        tosAgree: async (tosId: number) => this.performRequestDetailed<
+        tosCheck: async () => this.requestDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck"),
+        tosAgree: async (tosId: number) => this.requestDetailed<
           HTTPInterfaces.Response.tos.tosAgree>("tos", "tosAgree", { tos_id: tosId })
       },
       tutorial: {
         // set state to 1 to skip it
-        progress: async (state: number) => this.performRequestDetailed<HTTPInterfaces.Response.tutorial.progress,
+        progress: async (state: number) => this.requestDetailed<HTTPInterfaces.Response.tutorial.progress,
           HTTPInterfaces.RequestData.tutorial.progress>("tutorial", "progress", { tutorial_state: state }),
-        skip: async () => this.performRequestDetailed<HTTPInterfaces.Response.tutorial.skip>("tutorial", "skip")
+        skip: async () => this.requestDetailed<HTTPInterfaces.Response.tutorial.skip>("tutorial", "skip")
       },
       multi: {
         getStartUpInformation: async () => this.performMultipleRequest([ // TODO type annotation
@@ -1065,11 +1107,11 @@ export let getClientClass = (config: IConfig = {
         ])
       },
       unit: {
-        merge: async (base: number, partners: number[]) => this.performRequestDetailed<
+        merge: async (base: number, partners: number[]) => this.requestDetailed<
           HTTPInterfaces.Response.unit.merge,
           HTTPInterfaces.RequestData.unit.merge>("unit", "merge",
           { base_owning_unit_user_id: base, unit_owning_user_ids: partners }),
-        rankUp: async (base: number, partners: number[]) => this.performRequestDetailed<
+        rankUp: async (base: number, partners: number[]) => this.requestDetailed<
           HTTPInterfaces.Response.unit.rankUp,
           HTTPInterfaces.RequestData.unit.rankUp>("unit", "rankUp", {
             base_owning_unit_user_id: base,
@@ -1077,37 +1119,37 @@ export let getClientClass = (config: IConfig = {
           })
       },
       lbonus: {
-        execute: async () => this.performRequestDetailed<HTTPInterfaces.Response.lbonus.login>("lbonus", "execute")
+        execute: async () => this.requestDetailed<HTTPInterfaces.Response.lbonus.login>("lbonus", "execute")
       },
       personalnotice: {
-        get: async () => this.performRequestDetailed<
+        get: async () => this.requestDetailed<
           HTTPInterfaces.Response.personalnotice.get>("personalnotice", "get")
       },
       platformAccount: {
-        isConnectedLlAccount: async () => this.performRequestDetailed<
+        isConnectedLlAccount: async () => this.requestDetailed<
           HTTPInterfaces.Response.platformAccount.isConnectedLlAccount>("platformAccount", "isConnectedLlAccount")
       },
       handover: {
-        start: async () => this.performRequestDetailed<
+        start: async () => this.requestDetailed<
           HTTPInterfaces.Response.handover.start>("handover", "start"),
-        exec: async (code: string) => this.performRequestDetailed("handover", "exec", {
+        exec: async (code: string) => this.requestDetailed("handover", "exec", {
           handover: code
         }),
-        renew: async () => this.performRequestDetailed<
+        renew: async () => this.requestDetailed<
           HTTPInterfaces.Response.handover.renew>("handover", "renew"),
       },
       live: {
         // get available accompany friends list
-        partyList: async (songId: number) => this.performRequestDetailed<
+        partyList: async (songId: number) => this.requestDetailed<
           HTTPInterfaces.Response.live.partyList>("live", "partyList", {
             live_difficulty_id: songId
           }),
-        deckList: async (accompanyFriendId: number) => this.performRequestDetailed<
+        deckList: async (accompanyFriendId: number) => this.requestDetailed<
           HTTPInterfaces.Response.live.deckList>("live", "deckList", {
             party_user_id: accompanyFriendId
           }),
         play: async (songId: number, accompanyFriendId: number, deckId: number) =>
-          this.performRequestDetailed<HTTPInterfaces.Response.live.play>("live", "play", {
+          this.requestDetailed<HTTPInterfaces.Response.live.play>("live", "play", {
             live_difficulty_id: songId,
             party_user_id: accompanyFriendId,
             unit_deck_id: deckId
@@ -1117,7 +1159,7 @@ export let getClientClass = (config: IConfig = {
           love: number, maxCombo: number, liveDifficultyID: number,
           smile: number, cute: number, cool: number,
           eventID: number, eventPoint: number) => {
-          return await this.performRequestDetailed("live", "reward", {
+          return await this.requestDetailed("live", "reward", {
             "good_cnt": good,
             "miss_cnt": miss,
             "great_cnt": great,
