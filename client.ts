@@ -654,8 +654,10 @@ export namespace HTTPInterfaces {
   /* tslint:enable */
 }
 interface ICalculateHashFunction { (data: string): Promise<string>; };
+interface IDelayFunction { (apiAddr: string): Promise<any>; };
 export interface IConfig {
   calculateHash: ICalculateHashFunction;
+  delay: IDelayFunction;
   headers: {
     "Application-ID": string;
     Accept: string;
@@ -690,9 +692,55 @@ export namespace predefinedFunctions {
       async (data: string) => await crypto.hmac("sha1", key)(data, "utf8").toString("hex")
     );
   };
+  export namespace delay {
+    interface IMaxMinPair {
+      min: number;
+      max: number;
+    }
+    export interface IConfig {
+      tosAgree: IMaxMinPair;
+      userChangeName: IMaxMinPair;
+      loginUnitSelect: IMaxMinPair;
+      liveReward: IMaxMinPair;
+      default: IMaxMinPair;
+    }
+    export let custom = (config: IConfig) => (async (apiAddr: string) => {
+      switch (apiAddr) {
+        case "tos/tosAgree": {
+          await lib.delay(lib.randomInt(config.tosAgree.min, config.tosAgree.max));
+          break;
+        };
+        case "user/changeName": {
+          await lib.delay(lib.randomInt(config.userChangeName.min, config.userChangeName.max));
+          break;
+        };
+        case "login/unitSelect": {
+          await lib.delay(lib.randomInt(config.loginUnitSelect.min, config.loginUnitSelect.max));
+          break;
+        };
+        case "live/reward": {
+          await lib.delay(lib.randomInt(config.liveReward.min, config.liveReward.max));
+          break;
+        };
+        default: {
+          await lib.delay(lib.randomInt(config.default.min, config.default.max));
+          break;
+        };
+      };
+    });
+    export let fastest = () => Promise.resolve();
+    export let defaultTimes: IConfig = {
+      tosAgree: { min: 2000, max: 3000 },
+      userChangeName: { min: 3000, max: 5000 },
+      loginUnitSelect: { min: 3000, max: 7000 },
+      liveReward: { min: 150000, max: 180000 },
+      default: { min: 300, max: 500 }
+    };
+  }
 };
 export let getClientClass = (config: IConfig = {
   calculateHash: (data: string) => Promise.resolve(data),
+  delay: predefinedFunctions.delay.fastest,
   headers: {
     "Application-ID": "626776655",
     Accept: "*/*",
@@ -732,13 +780,13 @@ export let getClientClass = (config: IConfig = {
         json: true,
         gzip: true
       };
-      result.headers["authorize"] = `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=${nonce}`;
+      result.headers["Authorize"] = `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=${nonce}`;
       if (token) {
-        result.headers["authorize"] = `${result.headers["authorize"]}&token=${token}`;
+        result.headers["Authorize"] = `${result.headers["Authorize"]}&token=${token}`;
       }
       if (data) {
         result.formData = { request_data: JSON.stringify(data) };
-        result.headers["x-message-code"] = await this.calculateHash(data);
+        result.headers["X-Message-Code"] = await this.calculateHash(data);
       }
       return result;
     }
