@@ -22,7 +22,7 @@ export namespace HTTPInterfaces {
     status: number;
     commandNum: string;
     timeStamp: string;
-  }
+  };
   export interface SimpleRequestBase {
   };
   export interface DetailedRequestBase {
@@ -702,6 +702,7 @@ export namespace predefinedFunctions {
       userChangeName: IMaxMinPair;
       loginUnitSelect: IMaxMinPair;
       liveReward: IMaxMinPair;
+      handoverExec: IMaxMinPair;
       default: IMaxMinPair;
     }
     export let custom = (config: IConfig) => (async (apiAddr: string) => {
@@ -722,6 +723,10 @@ export namespace predefinedFunctions {
           await lib.delay(lib.randomInt(config.liveReward.min, config.liveReward.max));
           break;
         };
+        case "handover/exec": {
+          await lib.delay(lib.randomInt(config.handoverExec.min, config.handoverExec.max));
+          break;
+        };
         default: {
           await lib.delay(lib.randomInt(config.default.min, config.default.max));
           break;
@@ -734,6 +739,7 @@ export namespace predefinedFunctions {
       userChangeName: { min: 3000, max: 5000 },
       loginUnitSelect: { min: 3000, max: 7000 },
       liveReward: { min: 150000, max: 180000 },
+      handoverExec: { min: 5000, max: 10000 },
       default: { min: 300, max: 500 }
     };
   }
@@ -756,7 +762,10 @@ export let getClientClass = (config: IConfig = {
     "OS-Version": "Nexus 6 google shamu 5.0",
     "Platform-Type": "2"
   }
-}) => class Client {
+}) => {
+  if (!config.calculateHash) config.calculateHash = (data: string) => Promise.resolve(data);
+  if (!config.delay) config.delay = predefinedFunctions.delay.fastest;
+  return class Client {
     /**
      * basic functions
      */
@@ -769,12 +778,13 @@ export let getClientClass = (config: IConfig = {
       }
       return await config.calculateHash(plainText);
     };
-    private static async buildUpRequestOpt(module: string, api: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
-      return await Client.buildUpRequestOptPlain(`${module}/${api}`, nonce, data, token, customHeaders);
+    private static async buildUpRequestOpt(module: string, action: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
+      return await Client.buildUpRequestOptPlain(`${module}/${action}`, nonce, data, token, customHeaders);
     };
-    private static async buildUpRequestOptPlain(url: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
+    private static async buildUpRequestOptPlain(apiAddr: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
+      await config.delay(apiAddr);
       let result: Request.Options = {
-        uri: `http://prod-jp.lovelive.ge.klabgames.net/main.php/${url}`,
+        uri: `http://prod-jp.lovelive.ge.klabgames.net/main.php/${apiAddr}`,
         method: "POST",
         headers: merge(config.headers, customHeaders),
         json: true,
@@ -789,7 +799,7 @@ export let getClientClass = (config: IConfig = {
         result.headers["X-Message-Code"] = await this.calculateHash(data);
       }
       return result;
-    }
+    };
     /**
      * instance properties
      */
@@ -807,11 +817,11 @@ export let getClientClass = (config: IConfig = {
       this.user.loginKey = key;
       this.user.loginPasswd = passwd;
     }
-    async startGame(delays?: { tos?: number }) {
+    async startGame() {
       await this.buildUpUserToken();
       await this.api.user.userInfo();
       await this.api.personalnotice.get();
-      await this.tosCheckAndAgree(delays.tos); // delay
+      await this.tosCheckAndAgree();
       await this.api.platformAccount.isConnectedLlAccount();
       await this.api.lbonus.execute();
       // TODO simulate webview
@@ -829,7 +839,6 @@ export let getClientClass = (config: IConfig = {
       let parties = await this.api.live.partyList(3);
       let decks = await this.api.live.deckList(parties.response_data.party_list[0].user_info.user_id);
       let songInfo = await this.api.live.play(parties.response_data.party_list[0].user_info.user_id, 1, 3);
-      await lib.delay(interval);
       return await this.api.live.reward(143, 38, 0, 0, 0,
         35, 181, 3,
         25684, 0, 0,
@@ -844,11 +853,7 @@ export let getClientClass = (config: IConfig = {
     }
     // When Node.js adapts to v8 shipped with Chrome 49, use this line instead of the following 3 lines.
     // static async register(name = "Node-LLSIFClient", leader = 1): Promise<Client> {
-    static async register(delays?: {
-      tos?: number;
-      selectLeader?: number;
-      setName?: number;
-    }, name?: string, leader?: number): Promise<Client> {
+    static async register(name?: string, leader?: number): Promise<Client> {
       const defaultNames = `幻の学院生 明るい学院生 期待の学院生 純粋な学院生 素直な学院生 元気な学院生 天然な学院生 勇敢な学院生 気になる学院生 真面目な学院生 不思議な学院生 癒し系な学院生 心優しい学院生 さわやかな学院生 頼りになる学院生 さすらいの学院生 正義感あふれる学院生 カラオケ好きの学院生`.split(" ");
       if (!name) name = defaultNames[lib.randomInt(0, defaultNames.length - 1)];
       // When v8 supports destructing, use the feature
@@ -859,8 +864,7 @@ export let getClientClass = (config: IConfig = {
       await client.api.login.startWithoutInvite();
       await client.buildUpUserToken();
       await client.api.user.userInfo();
-      await client.tosCheckAndAgree(delays.tos); // with delay
-      await lib.delay(delays.setName); // delay
+      await client.tosCheckAndAgree();
       await client.api.user.changeName(name);
       await client.api.tutorial.progress(1);
       await client.api.multi.getStartUpInformation();
@@ -871,7 +875,6 @@ export let getClientClass = (config: IConfig = {
       }
       if (!leader) leader = lib.randomInt(0, availableUnits.length - 1);
       if (availableUnits.indexOf(leader) >= 0) {
-        await lib.delay(delays.selectLeader); // delay
         await client.api.login.unitSelect(leader);
       } else {
         throw "Invaid leader id";
@@ -889,7 +892,7 @@ export let getClientClass = (config: IConfig = {
       }
       return client;
     }
-    static async startFromTransferCode(code: string, delays?: { tos?: number, code?: number }) {
+    static async startFromTransferCode(code: string) {
       // When v8 supports, use better code
       // When v8 supports destructing, use the feature
       let accountCredits = Client.generateCreditalPair();
@@ -899,8 +902,7 @@ export let getClientClass = (config: IConfig = {
       await client.api.login.startWithoutInvite();
       await client.buildUpUserToken();
       await client.api.user.userInfo();
-      await client.tosCheckAndAgree(delays.tos); // delay
-      await lib.delay(delays.code); // delay
+      await client.tosCheckAndAgree();
       let result = (await client.api.handover.exec(code)).status_code;
       if (result !== 200) {
         throw "Invaid transfer code!";
@@ -913,10 +915,9 @@ export let getClientClass = (config: IConfig = {
       this.user.token = result.authorize_token;
       this.user.id = result.user_id;
     }
-    async tosCheckAndAgree(interval?: number) {
+    async tosCheckAndAgree() {
       let tosCheckResult = await this.api.tos.tosCheck();
       if (!tosCheckResult["response_data"]["is_agreed"]) {
-        await lib.delay(interval);
         await this.api.tos.tosAgree(tosCheckResult["response_data"]["tos_id"]);
       }
     }
@@ -1135,3 +1136,4 @@ export let getClientClass = (config: IConfig = {
       },
     };
   };
+};

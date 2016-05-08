@@ -7,6 +7,8 @@ import llsifclient = require("../");
 const config = require("./config.json");
 config["client_config"]["calculateHash"] =
   llsifclient.predefinedFunctions.calculateHash.LLMCG(config["client_config"]["llmcg_token"]);
+config["client_config"]["delay"] =
+  llsifclient.predefinedFunctions.delay.custom(llsifclient.predefinedFunctions.delay.defaultTimes);
 const Client = llsifclient.getClientClass(config["client_config"]);
 
 (async () => {
@@ -17,4 +19,5 @@ const Client = llsifclient.getClientClass(config["client_config"]);
   console.log(res);
   let newClient = await Client.startFromTransferCode(res.code);
   console.log(newClient);
-})();
+})()
+  .catch(console.log);
