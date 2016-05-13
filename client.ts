@@ -1,4 +1,4 @@
-/// <reference path="./references.d.ts" />
+/// <reference path="./ref.d.ts" />
 
 import request = require("request-promise");
 import * as Request from "request";
@@ -747,16 +747,18 @@ export namespace predefinedFunctions {
   }
 };
 export namespace Errors {
-  export class ApiError extends Error {
+  export class ApiError<T> extends Error {
     httpCode: number;
     apiCode: number;
     request: Request.Options;
-    constructor(httpStatus: number, apiStatus: number, requestOptions: Request.Options) {
+    response: T;
+    constructor(httpStatus?: number, apiStatus?: number, requestOptions?: Request.Options, response?: T) {
       super(`API Error with HTTP Status "${httpStatus}" and API Status "${apiStatus}"`);
       this.name = "APIError";
       this.httpCode = httpStatus;
       this.apiCode = apiStatus;
       this.request = requestOptions;
+      this.response = response;
     };
   };
   export class ClientNotInitializedError extends Error {
@@ -765,6 +767,18 @@ export namespace Errors {
       this.name = "ClientNotInitializedError";
     }
   };
+  export class InvalidTransferCodeError extends Error {
+    constructor() {
+      super("Invalid transfer code.");
+      this.name = "InvalidTransferCodeError";
+    }
+  };
+  export class InvalidUsernamePasswordPair extends Error {
+    constructor() {
+      super("Invalid username or password.");
+      this.name = "InvalidUsernamePasswordPairError";
+    }
+  }
 };
 export let getClientClass = (config: IConfig = {
   calculateHash: (data: string) => Promise.resolve(data),
@@ -789,7 +803,7 @@ export let getClientClass = (config: IConfig = {
   if (!config.calculateHash) config.calculateHash = (data: string) => Promise.resolve(data);
   if (!config.delay) config.delay = predefinedFunctions.delay.fastest;
   if (!config.maxRetry) config.maxRetry = 10;
-  return class Client {
+  let Client = class Client {
     /**
      * basic functions
      */
@@ -831,16 +845,15 @@ export let getClientClass = (config: IConfig = {
           return result.response_data;
         } catch (err) {
           if (err.name = "RequestError") {
-          } else if (err.name === "StatusCodeError") {
-            if (!((err.statusCode >= 502) && (err.statusCode <= 504))) {
-              throw new Errors.ApiError(err.statusCode, 0, options);
-            }
+          } else if (err.name === "StatusCodeError" &&
+            !((err.statusCode >= 502) && (err.statusCode <= 504))) {
+            throw new Errors.ApiError(err.statusCode, 0, options);
           } else {
             throw err;
           }
         }
       }
-    }
+    };
     /**
      * instance properties
      */
@@ -857,8 +870,8 @@ export let getClientClass = (config: IConfig = {
     constructor(key: string, passwd: string) {
       this.user.loginKey = key;
       this.user.loginPasswd = passwd;
-    }
-    async startGame() {
+    };
+    startGame = async () => {
       await this.buildUpUserToken();
       await this.api.user.userInfo();
       await this.api.personalnotice.get();
@@ -867,33 +880,33 @@ export let getClientClass = (config: IConfig = {
       await this.api.lbonus.execute();
       // TODO simulate webview
       await this.api.multi.getStartUpInformation();
-    }
-    async generateTransferCode() {
-      // TODO validate expiration
-      return (await this.api.handover.start()).response_data;
-    }
-    async regenerateTransferCode() {
-      return (await this.api.handover.renew()).response_data;
-    }
-    async playSong() {
-      let parties = await this.api.live.partyList(3);
-      let decks = await this.api.live.deckList(parties.response_data.party_list[0].user_info.user_id);
-      let songInfo = await this.api.live.play(parties.response_data.party_list[0].user_info.user_id, 1, 3);
-      return await this.api.live.reward(143, 38, 0, 0, 0,
-        35, 181, 3,
-        25684, 0, 0,
-        songInfo.response_data.is_marathon_event ? songInfo.response_data.marathon_event_id : 0,
-        songInfo.response_data.is_marathon_event ? 35 : 0);
-    }
+    };
+    generateTransferCode = async () => this.api.handover.start();
+    regenerateTransferCode = async () => this.api.handover.renew();
+    live = {
+      getPartyUsers: (liveId: number) => this.api.live.partyList(liveId),
+      getDecks: (partyUserId: number) => this.api.live.deckList(partyUserId),
+      getSongInfo: (liveId: number, partyUserId: number, deckId: number) =>
+        this.api.live.play(liveId, partyUserId, deckId),
+      getReward: (liveId: number,
+        perfect: number, great: number, good: number, bad: number, miss: number,
+        love: number, maxCombo: number,
+        smile: number, cute: number, cool: number,
+        eventID: number, eventPoint: number) => this.api.live.reward(perfect,
+          great, good, bad, miss,
+          love, maxCombo, liveId,
+          smile, cute, cool,
+          eventID, eventPoint)
+    };
     /**
      * create user
      */
-    private static generateCreditalPair(): [string, string] {
+    private static generateCreditalPair = (): [string, string] => {
       return [uuid.v4(), crypto.hash("sha512")([uuid.v4(), Date.now()].toString()).toString("hex")];
-    }
+    };
     // When Node.js adapts to v8 shipped with Chrome 49, use this line instead of the following 3 lines.
     // static async register(name = "Node-LLSIFClient", leader = 1): Promise<Client> {
-    static async register(name?: string, leader?: number): Promise<Client> {
+    static register = async (name?: string, leader?: number) => {
       const defaultNames = `幻の学院生 明るい学院生 期待の学院生 純粋な学院生 素直な学院生 元気な学院生 天然な学院生 勇敢な学院生 気になる学院生 真面目な学院生 不思議な学院生 癒し系な学院生 心優しい学院生 さわやかな学院生 頼りになる学院生 さすらいの学院生 正義感あふれる学院生 カラオケ好きの学院生`.split(" ");
       if (!name) name = defaultNames[lib.randomInt(0, defaultNames.length - 1)];
       // When v8 supports destructing, use the feature
@@ -910,7 +923,7 @@ export let getClientClass = (config: IConfig = {
       await client.api.multi.getStartUpInformation();
       await client.api.multi.unitAllAndDeck();
       let availableUnits: number[] = [];
-      for (let unit of (await client.api.login.unitList()).response_data.unit_initial_set) {
+      for (let unit of (await client.api.login.unitList()).unit_initial_set) {
         availableUnits.push(unit.unit_initial_set_id);
       }
       if (!leader) leader = lib.randomInt(0, availableUnits.length - 1);
@@ -931,8 +944,8 @@ export let getClientClass = (config: IConfig = {
         await client.api.tutorial.skip();
       }
       return client;
-    }
-    static async startFromTransferCode(code: string) {
+    };
+    static startFromTransferCode = async (code: string) => {
       // When v8 supports, use better code
       // When v8 supports destructing, use the feature
       let accountCredits = Client.generateCreditalPair();
@@ -943,24 +956,21 @@ export let getClientClass = (config: IConfig = {
       await client.buildUpUserToken();
       await client.api.user.userInfo();
       await client.tosCheckAndAgree();
-      let result = (await client.api.handover.exec(code)).status_code;
-      if (result !== 200) {
-        throw "Invaid transfer code!";
-      }
+      await client.api.handover.exec(code);
       return client;
-    }
-    async buildUpUserToken() {
+    };
+    buildUpUserToken = async () => {
       // When Node.js supports destructing, use it.
       let result = await this.api.login.login();
       this.user.token = result.authorize_token;
       this.user.id = result.user_id;
-    }
-    async tosCheckAndAgree() {
+    };
+    tosCheckAndAgree = async () => {
       let tosCheckResult = await this.api.tos.tosCheck();
-      if (!tosCheckResult.response_data.is_agreed) {
-        await this.api.tos.tosAgree(tosCheckResult.response_data.tos_id);
+      if (!tosCheckResult.is_agreed) {
+        await this.api.tos.tosAgree(tosCheckResult.tos_id);
       }
-    }
+    };
     /**
      * api basic
      */
@@ -974,21 +984,21 @@ export let getClientClass = (config: IConfig = {
       };
       let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
       return await result;
-    }
+    };
     private async buildUpRequestOptPlain<TRequest>(module: string, api: string, nonce: string, data: TRequest): Promise<Request.Options> {
       if (!this.user.token) {
         throw new Errors.ClientNotInitializedError();
       }
       let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
       return await result;
-    }
-    private async requestWithCredital<TResult>(module: string, api: string): Promise<HTTPInterfaces.ResponseBase<TResult>> {
-      return await Client.request<HTTPInterfaces.ResponseBase<TResult>>(
+    };
+    private async requestWithCredital<TResult>(module: string, api: string): Promise<TResult> {
+      return await Client.request<TResult>(
         await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString())
       );
-    }
-    async requestDetailed<TResult>(module: string, api: string, data?: any): Promise<HTTPInterfaces.ResponseBase<TResult>>;
-    async requestDetailed<TResult, TRequestData>(module: string, api: string, data: TRequestData): Promise<HTTPInterfaces.ResponseBase<TResult>>;
+    };
+    async requestDetailed<TResult>(module: string, api: string, data?: any): Promise<TResult>;
+    async requestDetailed<TResult, TRequestData>(module: string, api: string, data: TRequestData): Promise<TResult>;
     async requestDetailed(module: string, api: string, data: any) {
       let dataToSend = merge(<HTTPInterfaces.DetailedRequestBase>{
         module: module,
@@ -997,7 +1007,7 @@ export let getClientClass = (config: IConfig = {
         commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce++}`
       }, data);
       return await Client.request(await this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
-    }
+    };
     async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]): Promise<TResult> {
       let dataToSend: any[] = [];
       for (let request of requests) {
@@ -1008,7 +1018,7 @@ export let getClientClass = (config: IConfig = {
         }, request.data));
       }
       return await request(await Client.buildUpRequestOptPlain("api", (this.nonce++).toString(), dataToSend, this.user.token));
-    }
+    };
     /**
      * api implement
      */
@@ -1042,8 +1052,8 @@ export let getClientClass = (config: IConfig = {
         },
         startUp: async () => {
           let result = await this.requestWithCredital<HTTPInterfaces.Response.login.startUp>("login", "startUp");
-          if (result["response_data"]["login_key"] !== this.user.loginKey ||
-            result["response_data"]["login_passwd"] !== this.user.loginPasswd) {
+          if (result.login_key !== this.user.loginKey ||
+            result.login_passwd !== this.user.loginPasswd) {
             throw "Invaid api result: key or passwd mismatch";
           }
         },
@@ -1132,9 +1142,19 @@ export let getClientClass = (config: IConfig = {
       handover: {
         start: async () => this.requestDetailed<
           HTTPInterfaces.Response.handover.start>("handover", "start"),
-        exec: async (code: string) => this.requestDetailed("handover", "exec", {
-          handover: code
-        }),
+        exec: async (code: string) => {
+          try {
+            return await this.requestDetailed("handover", "exec", {
+              handover: code
+            });
+          } catch (err) {
+            if (err instanceof Errors.ApiError && (err.apiCode === 600 && err.response.error_code === 407)) {
+              throw new Errors.InvalidTransferCodeError();
+            } else {
+              throw err;
+            }
+          }
+        },
         renew: async () => this.requestDetailed<
           HTTPInterfaces.Response.handover.renew>("handover", "renew"),
       },
@@ -1159,23 +1179,25 @@ export let getClientClass = (config: IConfig = {
           love: number, maxCombo: number, liveDifficultyID: number,
           smile: number, cute: number, cool: number,
           eventID: number, eventPoint: number) => {
-          return await this.requestDetailed("live", "reward", {
-            "good_cnt": good,
-            "miss_cnt": miss,
-            "great_cnt": great,
-            "love_cnt": love, // bond pt
-            "max_combo": maxCombo,
-            "score_smile": smile,
-            "perfect_cnt": perfect,
-            "bad_cnt": bad,
-            "event_point": eventPoint,
-            "live_difficulty_id": liveDifficultyID,
-            "score_cute": cute,
-            "score_cool": cool,
-            "event_id": eventID
-          });
+          return await this.requestDetailed< // TODO request type annotation
+            HTTPInterfaces.Response.live.reward>("live", "reward", {
+              "good_cnt": good,
+              "miss_cnt": miss,
+              "great_cnt": great,
+              "love_cnt": love, // bond pt
+              "max_combo": maxCombo,
+              "score_smile": smile,
+              "perfect_cnt": perfect,
+              "bad_cnt": bad,
+              "event_point": eventPoint,
+              "live_difficulty_id": liveDifficultyID,
+              "score_cute": cute,
+              "score_cool": cool,
+              "event_id": eventID
+            });
         }
       },
     };
   };
+  return Client;
 };

@@ -1,10 +1,10 @@
-/// <reference path="../references.d.ts" />
+/// <reference path="../ref.d.ts" />
 
 import chai = require("chai");
 const expect = chai.expect;
 const utils = require("utility");
 import llsifclient = require("../");
-const config = require("./config.json");
+let config = require("./config.json");
 config["client_config"]["calculateHash"] =
   llsifclient.predefinedFunctions.calculateHash.LLMCG(config["client_config"]["llmcg_token"]);
 config["client_config"]["delay"] =

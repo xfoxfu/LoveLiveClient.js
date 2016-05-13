@@ -1,4 +1,4 @@
-/// <reference path="./references.d.ts" />
+/// <reference path="./ref.d.ts" />
 
 declare module "crypto-promise" {
   import * as crypto from "crypto";
