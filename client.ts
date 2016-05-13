@@ -901,8 +901,8 @@ export let getClientClass = (config: IConfig = {
     /**
      * create user
      */
-    private static generateCreditalPair = (): [string, string] => {
-      return [uuid.v4(), crypto.hash("sha512")([uuid.v4(), Date.now()].toString()).toString("hex")];
+    private static generateCreditalPair = async () => {
+      return [uuid.v4(), (await crypto.hash("sha512")([uuid.v4(), Date.now()].toString())).toString("hex")];
     };
     // When Node.js adapts to v8 shipped with Chrome 49, use this line instead of the following 3 lines.
     // static async register(name = "Node-LLSIFClient", leader = 1): Promise<Client> {
@@ -910,7 +910,7 @@ export let getClientClass = (config: IConfig = {
       const defaultNames = `幻の学院生 明るい学院生 期待の学院生 純粋な学院生 素直な学院生 元気な学院生 天然な学院生 勇敢な学院生 気になる学院生 真面目な学院生 不思議な学院生 癒し系な学院生 心優しい学院生 さわやかな学院生 頼りになる学院生 さすらいの学院生 正義感あふれる学院生 カラオケ好きの学院生`.split(" ");
       if (!name) name = defaultNames[lib.randomInt(0, defaultNames.length - 1)];
       // When v8 supports destructing, use the feature
-      let accountCredits = Client.generateCreditalPair();
+      let accountCredits = await Client.generateCreditalPair();
       let client = new Client(accountCredits[0], accountCredits[1]);
       client.user.token = await client.api.login.authkey();
       await client.api.login.startUp();
@@ -948,7 +948,7 @@ export let getClientClass = (config: IConfig = {
     static startFromTransferCode = async (code: string) => {
       // When v8 supports, use better code
       // When v8 supports destructing, use the feature
-      let accountCredits = Client.generateCreditalPair();
+      let accountCredits = await Client.generateCreditalPair();
       let client = new Client(accountCredits[0], accountCredits[1]);
       client.user.token = await client.api.login.authkey();
       await client.api.login.startUp();
