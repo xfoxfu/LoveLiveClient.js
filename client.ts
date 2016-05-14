@@ -845,9 +845,12 @@ export let getClientClass = (config: IConfig = {
           return result.response_data;
         } catch (err) {
           if (err.name = "RequestError") {
-          } else if (err.name === "StatusCodeError" &&
-            !((err.statusCode >= 502) && (err.statusCode <= 504))) {
-            throw new Errors.ApiError(err.statusCode, 0, options);
+          } else if (err.name === "StatusCodeError") {
+            if (!((err.statusCode >= 502) && (err.statusCode <= 504))) {
+              throw new Errors.ApiError(err.statusCode, 0, options);
+            } else {
+              // ignore and retry
+            }
           } else {
             throw err;
           }
