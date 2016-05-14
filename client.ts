@@ -653,7 +653,7 @@ export namespace HTTPInterfaces {
     };
   };
   /* tslint:enable */
-}
+};
 interface ICalculateHashFunction { (data: string): Promise<string>; };
 interface IDelayFunction { (apiAddr: string): Promise<any>; };
 export interface IConfig {
@@ -678,6 +678,7 @@ export interface IConfig {
     "Content-Type"?: string;
     "X-Message-Code"?: string;
   };
+  server: string;
 };
 export namespace predefinedFunctions {
   export namespace calculateHash {
@@ -780,29 +781,16 @@ export namespace Errors {
     }
   }
 };
-export let getClientClass = (config: IConfig = {
-  calculateHash: (data: string) => Promise.resolve(data),
-  delay: predefinedFunctions.delay.fastest,
-  maxRetry: 10,
-  headers: {
-    "Application-ID": "626776655",
-    Accept: "*/*",
-    "Time-Zone": "JST",
-    "Api-Model": "straightforward",
-    "Client-Version": "17.9",
-    Host: "prod-jp.lovelive.ge.klabgames.net",
-    OS: "Android",
-    "Accept-Encoding": "gzip,deflate",
-    Debug: "1",
-    Region: "392",
-    "Bundle-Version": "3.2",
-    "OS-Version": "Nexus 6 google shamu 5.0",
-    "Platform-Type": "2"
-  }
-}) => {
-  if (!config.calculateHash) config.calculateHash = (data: string) => Promise.resolve(data);
-  if (!config.delay) config.delay = predefinedFunctions.delay.fastest;
-  if (!config.maxRetry) config.maxRetry = 10;
+export let getClientClass = (headers: any, maxRetry?: number, server?: string,
+  calculateHash?: ICalculateHashFunction,
+  delay?: IDelayFunction) => {
+  let config: IConfig = {
+    calculateHash: calculateHash || ((data: string) => Promise.resolve(data)),
+    delay: delay || predefinedFunctions.delay.fastest,
+    maxRetry: maxRetry || 10,
+    headers: headers,
+    server: server || "http://prod-jp.lovelive.ge.klabgames.net/main.php/"
+  };
   let Client = class Client {
     /**
      * basic functions
@@ -816,6 +804,7 @@ export let getClientClass = (config: IConfig = {
       }
       return await config.calculateHash(plainText);
     };
+    // <-- to be deprecated
     private static async buildUpRequestOpt(module: string, action: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
       return await Client.buildUpRequestOptPlain(`${module}/${action}`, nonce, data, token, customHeaders);
     };
@@ -857,6 +846,7 @@ export let getClientClass = (config: IConfig = {
         }
       }
     };
+    // -->
     /**
      * instance properties
      */
@@ -977,6 +967,7 @@ export let getClientClass = (config: IConfig = {
     /**
      * api basic
      */
+    // <-- to be deprecated
     private async buildUpRequestOptWithCredital<TRequest>(module: string, api: string, nonce: string): Promise<Request.Options> {
       if ((!this.user.loginKey) && (!this.user.loginPasswd) && (!this.user.token)) {
         throw new Errors.ClientNotInitializedError();
@@ -1021,6 +1012,69 @@ export let getClientClass = (config: IConfig = {
         }, request.data));
       }
       return await request(await Client.buildUpRequestOptPlain("api", (this.nonce++).toString(), dataToSend, this.user.token));
+    };
+    // -->
+    async callAPIPlain<TResult, TRequest>(apiAddr: string, nonce: string, data: TRequest, token?: string): Promise<TResult>;
+    async callAPIPlain<TResult>(apiAddr: string, nonce: string, data?: any, token?: string): Promise<TResult>;
+    async callAPIPlain<TResult>(apiAddr: string, nonce: string, data?: any, token?: string) {
+      await config.delay(apiAddr);
+      let opt: Request.Options = {
+        uri: `${config.server}${apiAddr}`,
+        method: "POST",
+        headers: config.headers,
+        json: true,
+        gzip: true
+      };
+      opt.headers["Authorize"] = `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=${nonce}`;
+      if (token) {
+        opt.headers["Authorize"] = `${opt.headers["Authorize"]}&token=${token}`;
+      }
+      if (data) {
+        opt.formData = { request_data: JSON.stringify(data) };
+        opt.headers["X-Message-Code"] = await Client.calculateHash(data);
+      }
+      for (let i = 1; i <= config.maxRetry; i++) {
+        try {
+          let result: HTTPInterfaces.ResponseBase<TResult> = await request(opt);
+          return result.response_data;
+        } catch (err) {
+          if (err.name = "RequestError") {
+            // ignore and retry
+          } else if (err.name === "StatusCodeError") {
+            if ((err.statusCode >= 502) && (err.statusCode <= 504)) {
+              // ignore and retry
+            } else {
+              throw new Errors.ApiError(err.statusCode, err.response.status, opt, err.response);
+            }
+          } else {
+            throw err;
+          }
+        }
+      }
+    };
+    async callAPIDetailed<TResult>(module: string, action: string, data?: any): Promise<TResult>;
+    async callAPIDetailed<TResult, TRequest>(module: string, action: string, data?: TRequest): Promise<TResult>;
+    async callAPIDetailed<TResult, TRequest>(module: string, action: string, data?: TRequest) {
+      return this.callAPIPlain<TResult, TRequest | HTTPInterfaces.DetailedRequestBase>(
+        `${module}/${action}`, (this.nonce++).toString(), merge(
+          <HTTPInterfaces.DetailedRequestBase>{
+            module: module,
+            action: action,
+            timeStamp: utils.timestamp().toString(),
+            commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce}`
+          }, data)
+      );
+    };
+    async callMultipleAPI<TMultiResult>(...requests: { module: string, action: string, data?: any }[]) {
+      let data: any[] = [];
+      for (let request of requests) {
+        data.push(merge({
+          module: request.module,
+          action: request.action,
+          timeStamp: utils.timestamp().toString()
+        }, request.data));
+      }
+      return this.callAPIPlain<TMultiResult>("api", (this.nonce++).toString(), data);
     };
     /**
      * api implement
