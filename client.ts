@@ -984,7 +984,7 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       }
       await client.api.tutorial.skip();
       {
-        let result = (await client.api.multi.unitAllAndDeck())["response_data"];
+        let result = await client.api.multi.unitAllAndDeck();
         let base = result[0]["result"][0]["unit_owning_user_id"];
         let mergePartner = result[0]["result"][10]["unit_owning_user_id"];
         await client.api.unit.merge(base, [mergePartner]);
@@ -1058,13 +1058,18 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
         } catch (err) {
           if (err.name = "RequestError") {
             // ignore and retry
+            console.log(`retry on RequestError`);
           } else if (err.name === "StatusCodeError") {
             if ((err.statusCode >= 502) && (err.statusCode <= 504)) {
               // ignore and retry
+              console.log(`retry with statusCode ${err.statusCode}`);
             } else {
               throw new Errors.ApiError(err.statusCode, err.response.status, opt, err.response);
             }
           } else {
+            throw err;
+          }
+          if (i === config.maxRetry) {
             throw err;
           }
         }
@@ -1106,7 +1111,7 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
          * @return Promise<string>
          */
         authkey: async (): Promise<string> => {
-          return (await this.callAPIPlain<HTTPInterfaces.Response.login.authkey>("login/authkey", "1")).authorize_token;
+          return (await this.callAPIPlain<HTTPInterfaces.Response.login.authkey>("login/authkey")).authorize_token;
         },
         /**
          * login/login
