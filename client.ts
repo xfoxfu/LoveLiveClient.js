@@ -66,6 +66,29 @@ export namespace HTTPInterfaces {
       export interface unitSelect {
         unit_id: number[];
       };
+      export interface topInfo {
+        result: {
+          friend_action_cnt: number;
+          friend_greet_cnt: number;
+          friend_variety_cnt: number;
+          present_cnt: number;
+          free_gacha_flag: boolean;
+          server_datetime: string;
+          server_timestamp: number;
+          next_free_gacha_timestamp: number;
+          notice_friend_datetime: string;
+          notice_mail_datetime: string
+        };
+        status: number;
+        commandNum: boolean;
+        timeStamp: string;
+      };
+      export interface topInfoOnce {
+        new_achievement_cnt: number;
+        unaccomplished_achievement_cnt: number;
+        handover_expire_status: number;
+        live_daily_reward_exist: boolean;
+      };
     };
     export namespace user {
       export interface userInfo {
@@ -380,6 +403,56 @@ export namespace HTTPInterfaces {
       export interface renew extends code { };
     };
     export namespace live {
+      export interface liveStatus {
+        normal_live_status_list: {
+          live_difficulty_id: number;
+          status: number;
+          hi_score: number;
+          hi_combo_count: number;
+          clear_cnt: number;
+          achieved_goal_id_list: number[]
+        }[];
+        special_live_status_list: {
+          live_difficulty_id: number;
+          status: number;
+          hi_score: number;
+          hi_combo_count: number;
+          clear_cnt: number;
+          achieved_goal_id_list: number[]
+        }[];
+        marathon_live_status_list: {
+          live_difficulty_id: number;
+          status: number;
+          hi_score: number;
+          hi_combo_count: number;
+          clear_cnt: number;
+          achieved_goal_id_list: number[]
+        }[];
+      };
+      export interface schedule {
+        event_list: {
+          event_id: number;
+          event_category_id: number;
+          name: string;
+          open_date: string;
+          start_date: string;
+          end_date: string;
+          close_date: string;
+          banner_asset_name: string;
+          banner_se_asset_name: string;
+          result_banner_asset_name: string;
+          description: string;
+        }[];
+        live_list: {
+          live_difficulty_id: number;
+          start_date: string;
+          end_date: string;
+          is_random: boolean;
+          dangerous: boolean;
+          use_quad_point: boolean;
+        }[];
+        limited_bonus_list: any[]; // TODO
+      };
       export interface partyList {
         party_list: {
           user_info: {
@@ -611,6 +684,31 @@ export namespace HTTPInterfaces {
         daily_reward_info: any[];
       };
     };
+    export namespace marathon {
+      export interface marathonInfo extends Array<any> { }; // TODO
+    };
+    export namespace payment {
+      export interface productList {
+        product_list: {
+          product_id: string;
+          name: string;
+          price: number;
+          product_type: number;
+          item_list: {
+            item_id: number;
+            add_type: number;
+            amount: number;
+            is_freebie: boolean;
+          }[];
+          limit_status?: {
+            end_date: string;
+            term_end_date: string;
+            remaining_time: string;
+            remaining_count: number;
+          };
+        }[];
+      };
+    }
   };
   export namespace RequestData {
     export namespace login {
@@ -804,48 +902,6 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       }
       return await config.calculateHash(plainText);
     };
-    // <-- to be deprecated
-    private static async buildUpRequestOpt(module: string, action: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
-      return await Client.buildUpRequestOptPlain(`${module}/${action}`, nonce, data, token, customHeaders);
-    };
-    private static async buildUpRequestOptPlain(apiAddr: string, nonce: string, data?: any, token?: string, customHeaders?: any): Promise<Request.Options> {
-      await config.delay(apiAddr);
-      let result: Request.Options = {
-        uri: `http://prod-jp.lovelive.ge.klabgames.net/main.php/${apiAddr}`,
-        method: "POST",
-        headers: merge(config.headers, customHeaders),
-        json: true,
-        gzip: true
-      };
-      result.headers["Authorize"] = `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=${nonce}`;
-      if (token) {
-        result.headers["Authorize"] = `${result.headers["Authorize"]}&token=${token}`;
-      }
-      if (data) {
-        result.formData = { request_data: JSON.stringify(data) };
-        result.headers["X-Message-Code"] = await this.calculateHash(data);
-      }
-      return result;
-    };
-    private static async request<T>(options: Request.Options): Promise<T> {
-      for (let i = 1; i <= config.maxRetry; i++) {
-        try {
-          let result: HTTPInterfaces.ResponseBase<T> = await request(options);
-          return result.response_data;
-        } catch (err) {
-          if (err.name = "RequestError") {
-          } else if (err.name === "StatusCodeError") {
-            if (!((err.statusCode >= 502) && (err.statusCode <= 504))) {
-              throw new Errors.ApiError(err.statusCode, 0, options);
-            } else {
-              // ignore and retry
-            }
-          } else {
-            throw err;
-          }
-        }
-      }
-    };
     // -->
     /**
      * instance properties
@@ -865,7 +921,7 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       this.user.loginPasswd = passwd;
     };
     startGame = async () => {
-      await this.buildUpUserToken();
+      await this.initialize();
       await this.api.user.userInfo();
       await this.api.personalnotice.get();
       await this.tosCheckAndAgree();
@@ -905,10 +961,11 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       // When v8 supports destructing, use the feature
       let accountCredits = await Client.generateCreditalPair();
       let client = new Client(accountCredits[0], accountCredits[1]);
+      client.resetNonce();
       client.user.token = await client.api.login.authkey();
       await client.api.login.startUp();
       await client.api.login.startWithoutInvite();
-      await client.buildUpUserToken();
+      await client.initialize();
       await client.api.user.userInfo();
       await client.tosCheckAndAgree();
       await client.api.user.changeName(name);
@@ -943,17 +1000,19 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       // When v8 supports destructing, use the feature
       let accountCredits = await Client.generateCreditalPair();
       let client = new Client(accountCredits[0], accountCredits[1]);
+      client.resetNonce();
       client.user.token = await client.api.login.authkey();
       await client.api.login.startUp();
       await client.api.login.startWithoutInvite();
-      await client.buildUpUserToken();
+      await client.initialize();
       await client.api.user.userInfo();
       await client.tosCheckAndAgree();
       await client.api.handover.exec(code);
       return client;
     };
-    buildUpUserToken = async () => {
-      // When Node.js supports destructing, use it.
+    initialize = async () => {
+      this.resetNonce();
+      this.user.token = await this.api.login.authkey();
       let result = await this.api.login.login();
       this.user.token = result.authorize_token;
       this.user.id = result.user_id;
@@ -967,56 +1026,12 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
     /**
      * api basic
      */
-    // <-- to be deprecated
-    private async buildUpRequestOptWithCredital<TRequest>(module: string, api: string, nonce: string): Promise<Request.Options> {
-      if ((!this.user.loginKey) && (!this.user.loginPasswd) && (!this.user.token)) {
-        throw new Errors.ClientNotInitializedError();
-      }
-      let data = {
-        login_key: this.user.loginKey,
-        login_passwd: this.user.loginPasswd
-      };
-      let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
-      return await result;
-    };
-    private async buildUpRequestOptPlain<TRequest>(module: string, api: string, nonce: string, data: TRequest): Promise<Request.Options> {
-      if (!this.user.token) {
-        throw new Errors.ClientNotInitializedError();
-      }
-      let result = Client.buildUpRequestOpt(module, api, nonce, data, this.user.token, this.user.id ? { "User-ID": this.user.id } : {});
-      return await result;
-    };
-    private async requestWithCredital<TResult>(module: string, api: string): Promise<TResult> {
-      return await Client.request<TResult>(
-        await this.buildUpRequestOptWithCredital(module, api, (this.nonce++).toString())
-      );
-    };
-    async requestDetailed<TResult>(module: string, api: string, data?: any): Promise<TResult>;
-    async requestDetailed<TResult, TRequestData>(module: string, api: string, data: TRequestData): Promise<TResult>;
-    async requestDetailed(module: string, api: string, data: any) {
-      let dataToSend = merge(<HTTPInterfaces.DetailedRequestBase>{
-        module: module,
-        action: api,
-        timeStamp: utils.timestamp().toString(),
-        commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce++}`
-      }, data);
-      return await Client.request(await this.buildUpRequestOptPlain(module, api, this.nonce.toString(), dataToSend));
-    };
-    async performMultipleRequest<TResult>(requests: { module: string, api: string, data?: any }[]): Promise<TResult> {
-      let dataToSend: any[] = [];
-      for (let request of requests) {
-        dataToSend.push(merge({
-          module: request.module,
-          action: request.api,
-          timeStamp: utils.timestamp().toString()
-        }, request.data));
-      }
-      return await request(await Client.buildUpRequestOptPlain("api", (this.nonce++).toString(), dataToSend, this.user.token));
-    };
-    // -->
-    async callAPIPlain<TResult, TRequest>(apiAddr: string, nonce: string, data: TRequest, token?: string): Promise<TResult>;
-    async callAPIPlain<TResult>(apiAddr: string, nonce: string, data?: any, token?: string): Promise<TResult>;
-    async callAPIPlain<TResult>(apiAddr: string, nonce: string, data?: any, token?: string) {
+    resetNonce() {
+      this.nonce = 1;
+    }
+    async callAPIPlain<TResult, TRequest>(apiAddr: string, data: TRequest): Promise<TResult>;
+    async callAPIPlain<TResult>(apiAddr: string, data?: any): Promise<TResult>;
+    async callAPIPlain<TResult>(apiAddr: string, data?: any) {
       await config.delay(apiAddr);
       let opt: Request.Options = {
         uri: `${config.server}${apiAddr}`,
@@ -1025,13 +1040,16 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
         json: true,
         gzip: true
       };
-      opt.headers["Authorize"] = `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=${nonce}`;
-      if (token) {
-        opt.headers["Authorize"] = `${opt.headers["Authorize"]}&token=${token}`;
+      opt.headers["Authorize"] = `consumerKey=lovelive_test&timeStamp=${utils.timestamp()}&version=1.1&nonce=${this.nonce++}`;
+      if (this.user.token) {
+        opt.headers["Authorize"] = `${opt.headers["Authorize"]}&token=${this.user.token}`;
       }
       if (data) {
         opt.formData = { request_data: JSON.stringify(data) };
         opt.headers["X-Message-Code"] = await Client.calculateHash(data);
+      }
+      if (this.user.id) {
+        opt.headers["User-ID"] = this.user.id;
       }
       for (let i = 1; i <= config.maxRetry; i++) {
         try {
@@ -1056,14 +1074,13 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
     async callAPIDetailed<TResult, TRequest>(module: string, action: string, data?: TRequest): Promise<TResult>;
     async callAPIDetailed<TResult, TRequest>(module: string, action: string, data?: TRequest) {
       return this.callAPIPlain<TResult, TRequest | HTTPInterfaces.DetailedRequestBase>(
-        `${module}/${action}`, (this.nonce++).toString(), merge(
+        `${module}/${action}`, merge(
           <HTTPInterfaces.DetailedRequestBase>{
             module: module,
             action: action,
             timeStamp: utils.timestamp().toString(),
             commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce}`
-          }, data)
-      );
+          }, data));
     };
     async callMultipleAPI<TMultiResult>(...requests: { module: string, action: string, data?: any }[]) {
       let data: any[] = [];
@@ -1074,7 +1091,7 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
           timeStamp: utils.timestamp().toString()
         }, request.data));
       }
-      return this.callAPIPlain<TMultiResult>("api", (this.nonce++).toString(), data);
+      return this.callAPIPlain<TMultiResult>("api", data);
     };
     /**
      * api implement
@@ -1089,9 +1106,7 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
          * @return Promise<string>
          */
         authkey: async (): Promise<string> => {
-          let result: HTTPInterfaces.ResponseBase<HTTPInterfaces.Response.login.authkey> =
-            await request(await Client.buildUpRequestOpt("login", "authkey", "1"));
-          return result.response_data.authorize_token;
+          return (await this.callAPIPlain<HTTPInterfaces.Response.login.authkey>("login/authkey", "1")).authorize_token;
         },
         /**
          * login/login
@@ -1100,85 +1115,88 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
          * 
          * @return Promise<string>
          */
-        login: async () => {
-          let result: HTTPInterfaces.ResponseBase<HTTPInterfaces.Response.login.login> =
-            await request(
-              await Client.buildUpRequestOpt("login", "login", "2",
-                { "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd }, await this.api.login.authkey()));
-          return result.response_data;
-        },
+        login: async () =>
+          await this.callAPIPlain<HTTPInterfaces.Response.login.login,
+            HTTPInterfaces.RequestData.login.login>("login/login",
+            {
+              "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd
+            }),
         startUp: async () => {
-          let result = await this.requestWithCredital<HTTPInterfaces.Response.login.startUp>("login", "startUp");
+          let result = await this.callAPIPlain<
+            HTTPInterfaces.Response.login.startUp>("login/startUp",
+            {
+              "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd
+            });
           if (result.login_key !== this.user.loginKey ||
             result.login_passwd !== this.user.loginPasswd) {
             throw "Invaid api result: key or passwd mismatch";
           }
         },
-        startWithoutInvite: async () => this.requestWithCredital<
-          HTTPInterfaces.Response.login.startWithoutInvite>("login", "startWithoutInvite"),
-        unitList: async () => this.requestDetailed<
+        startWithoutInvite: async () => this.callAPIPlain<
+          HTTPInterfaces.Response.login.startWithoutInvite>("login/startWithoutInvite",
+          {
+            "login_key": this.user.loginKey, "login_passwd": this.user.loginPasswd
+          }),
+        unitList: async () => this.callAPIDetailed<
           HTTPInterfaces.Response.login.unitList>("login", "unitList"),
         // set the center of initial team
-        unitSelect: async (unitId: number) => this.requestDetailed<HTTPInterfaces.Response.login.unitSelect,
+        unitSelect: async (unitId: number) => this.callAPIDetailed<HTTPInterfaces.Response.login.unitSelect,
           HTTPInterfaces.RequestData.login.unitSelect>("login", "unitSelect", {
             unit_initial_set_id: unitId
           })
       },
       user: {
-        userInfo: async () => this.requestDetailed<HTTPInterfaces.Response.user.userInfo>("user", "userInfo"),
-        changeName: async (nickname: string) => this.requestDetailed<HTTPInterfaces.Response.user.changeName,
+        userInfo: async () => this.callAPIDetailed<HTTPInterfaces.Response.user.userInfo>("user", "userInfo"),
+        changeName: async (nickname: string) => this.callAPIDetailed<HTTPInterfaces.Response.user.changeName,
           HTTPInterfaces.RequestData.user.changeName>("user", "changeName", { name: nickname })
       },
       tos: {
-        tosCheck: async () => this.requestDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck"),
-        tosAgree: async (tosId: number) => this.requestDetailed<
+        tosCheck: async () => this.callAPIDetailed<HTTPInterfaces.Response.tos.tosCheck>("tos", "tosCheck"),
+        tosAgree: async (tosId: number) => this.callAPIDetailed<
           HTTPInterfaces.Response.tos.tosAgree>("tos", "tosAgree", { tos_id: tosId })
       },
       tutorial: {
         // set state to 1 to skip it
-        progress: async (state: number) => this.requestDetailed<HTTPInterfaces.Response.tutorial.progress,
+        progress: async (state: number) => this.callAPIDetailed<HTTPInterfaces.Response.tutorial.progress,
           HTTPInterfaces.RequestData.tutorial.progress>("tutorial", "progress", { tutorial_state: state }),
-        skip: async () => this.requestDetailed<HTTPInterfaces.Response.tutorial.skip>("tutorial", "skip")
+        skip: async () => this.callAPIDetailed<HTTPInterfaces.Response.tutorial.skip>("tutorial", "skip")
       },
       multi: {
-        getStartUpInformation: async () => this.performMultipleRequest([ // TODO type annotation
-          { module: "login", api: "topInfo" },
-          { module: "live", api: "liveStatus" },
-          { module: "live", api: "schedule" },
-          { module: "marathon", api: "marathonInfo" },
-          { module: "login", api: "topInfoOnce" },
-          { module: "unit", api: "unitAll" },
-          { module: "unit", api: "deckInfo" },
-          { module: "payment", api: "productList" },
-          { module: "scenario", api: "scenarioStatus" },
-          { module: "subscenario", api: "subscenarioStatus" },
-          { module: "user", api: "showAllItem" },
-          { module: "battle", api: "battleInfo" },
-          { module: "banner", api: "bannerList" },
-          { module: "notice", api: "noticeMarquee" },
-          { module: "festival", api: "festivalInfo" },
-          { module: "eventscenario", api: "status" },
-          { module: "navigation", api: "specialCutin" },
-          { module: "album", api: "albumAll" },
-          { module: "award", api: "awardInfo" },
-          { module: "background", api: "backgroundInfo" },
-          { module: "online", api: "info" },
-          { module: "challenge", api: "challengeInfo" }
-        ]),
-        unitAllAndDeck: async () => await this.performMultipleRequest<[
+        getStartUpInformation: async () => this.callMultipleAPI( // TODO type annotation
+          { module: "login", action: "topInfo" },
+          { module: "live", action: "liveStatus" },
+          { module: "live", action: "schedule" },
+          { module: "marathon", action: "marathonInfo" },
+          { module: "login", action: "topInfoOnce" },
+          { module: "unit", action: "unitAll" },
+          { module: "unit", action: "deckInfo" },
+          { module: "payment", action: "productList" },
+          { module: "scenario", action: "scenarioStatus" },
+          { module: "subscenario", action: "subscenarioStatus" },
+          { module: "user", action: "showAllItem" },
+          { module: "battle", action: "battleInfo" },
+          { module: "banner", action: "bannerList" },
+          { module: "notice", action: "noticeMarquee" },
+          { module: "festival", action: "festivalInfo" },
+          { module: "eventscenario", action: "status" },
+          { module: "navigation", action: "specialCutin" },
+          { module: "album", action: "albumAll" },
+          { module: "award", action: "awardInfo" },
+          { module: "background", action: "backgroundInfo" },
+          { module: "online", action: "info" },
+          { module: "challenge", action: "challengeInfo" }),
+        unitAllAndDeck: async () => await this.callMultipleAPI<[
           HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.unitAll>,
           HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.deckInfo>
-        ]>([
-          { module: "unit", api: "unitAll" },
-          { module: "unit", api: "deckInfo" }
-        ])
+        ]>({ module: "unit", action: "unitAll" },
+          { module: "unit", action: "deckInfo" })
       },
       unit: {
-        merge: async (base: number, partners: number[]) => this.requestDetailed<
+        merge: async (base: number, partners: number[]) => this.callAPIDetailed<
           HTTPInterfaces.Response.unit.merge,
           HTTPInterfaces.RequestData.unit.merge>("unit", "merge",
           { base_owning_unit_user_id: base, unit_owning_user_ids: partners }),
-        rankUp: async (base: number, partners: number[]) => this.requestDetailed<
+        rankUp: async (base: number, partners: number[]) => this.callAPIDetailed<
           HTTPInterfaces.Response.unit.rankUp,
           HTTPInterfaces.RequestData.unit.rankUp>("unit", "rankUp", {
             base_owning_unit_user_id: base,
@@ -1186,22 +1204,22 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
           })
       },
       lbonus: {
-        execute: async () => this.requestDetailed<HTTPInterfaces.Response.lbonus.login>("lbonus", "execute")
+        execute: async () => this.callAPIDetailed<HTTPInterfaces.Response.lbonus.login>("lbonus", "execute")
       },
       personalnotice: {
-        get: async () => this.requestDetailed<
+        get: async () => this.callAPIDetailed<
           HTTPInterfaces.Response.personalnotice.get>("personalnotice", "get")
       },
       platformAccount: {
-        isConnectedLlAccount: async () => this.requestDetailed<
+        isConnectedLlAccount: async () => this.callAPIDetailed<
           HTTPInterfaces.Response.platformAccount.isConnectedLlAccount>("platformAccount", "isConnectedLlAccount")
       },
       handover: {
-        start: async () => this.requestDetailed<
+        start: async () => this.callAPIDetailed<
           HTTPInterfaces.Response.handover.start>("handover", "start"),
         exec: async (code: string) => {
           try {
-            return await this.requestDetailed("handover", "exec", {
+            return await this.callAPIDetailed("handover", "exec", {
               handover: code
             });
           } catch (err) {
@@ -1212,21 +1230,21 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
             }
           }
         },
-        renew: async () => this.requestDetailed<
+        renew: async () => this.callAPIDetailed<
           HTTPInterfaces.Response.handover.renew>("handover", "renew"),
       },
       live: {
         // get available accompany friends list
-        partyList: async (songId: number) => this.requestDetailed<
+        partyList: async (songId: number) => this.callAPIDetailed<
           HTTPInterfaces.Response.live.partyList>("live", "partyList", {
             live_difficulty_id: songId
           }),
-        deckList: async (accompanyFriendId: number) => this.requestDetailed<
+        deckList: async (accompanyFriendId: number) => this.callAPIDetailed<
           HTTPInterfaces.Response.live.deckList>("live", "deckList", {
             party_user_id: accompanyFriendId
           }),
         play: async (songId: number, accompanyFriendId: number, deckId: number) =>
-          this.requestDetailed<HTTPInterfaces.Response.live.play>("live", "play", {
+          this.callAPIDetailed<HTTPInterfaces.Response.live.play>("live", "play", {
             live_difficulty_id: songId,
             party_user_id: accompanyFriendId,
             unit_deck_id: deckId
@@ -1236,7 +1254,7 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
           love: number, maxCombo: number, liveDifficultyID: number,
           smile: number, cute: number, cool: number,
           eventID: number, eventPoint: number) => {
-          return await this.requestDetailed< // TODO request type annotation
+          return await this.callAPIDetailed< // TODO request type annotation
             HTTPInterfaces.Response.live.reward>("live", "reward", {
               "good_cnt": good,
               "miss_cnt": miss,
