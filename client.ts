@@ -1058,11 +1058,9 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
         } catch (err) {
           if (err.name = "RequestError") {
             // ignore and retry
-            console.log(`retry on RequestError`);
           } else if (err.name === "StatusCodeError") {
             if ((err.statusCode >= 502) && (err.statusCode <= 504)) {
               // ignore and retry
-              console.log(`retry with statusCode ${err.statusCode}`);
             } else {
               throw new Errors.ApiError(err.statusCode, err.response.status, opt, err.response);
             }
