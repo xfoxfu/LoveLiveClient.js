@@ -804,6 +804,9 @@ export namespace predefinedFunctions {
       loginUnitSelect: IMaxMinPair;
       liveReward: IMaxMinPair;
       handoverExec: IMaxMinPair;
+      livePartyList: IMaxMinPair;
+      liveDeckList: IMaxMinPair;
+      livePlay: IMaxMinPair;
       default: IMaxMinPair;
     }
     export let custom = (config: IConfig) => (async (apiAddr: string) => {
@@ -820,6 +823,18 @@ export namespace predefinedFunctions {
           await lib.delay(lib.randomInt(config.loginUnitSelect.min, config.loginUnitSelect.max));
           break;
         };
+        case "live/partyList": {
+          await lib.delay(lib.randomInt(config.livePartyList.min, config.livePartyList.max));
+          break;
+        };
+        case "live/deckList": {
+          await lib.delay(lib.randomInt(config.liveDeckList.min, config.liveDeckList.max));
+          break;
+        };
+        case "live/play": {
+          await lib.delay(lib.randomInt(config.livePlay.min, config.livePlay.max));
+          break;
+        }
         case "live/reward": {
           await lib.delay(lib.randomInt(config.liveReward.min, config.liveReward.max));
           break;
@@ -841,6 +856,9 @@ export namespace predefinedFunctions {
       loginUnitSelect: { min: 3000, max: 7000 },
       liveReward: { min: 150000, max: 180000 },
       handoverExec: { min: 5000, max: 10000 },
+      liveDeckList: { min: 3000, max: 5000 },
+      livePartyList: { min: 3000, max: 7000 },
+      livePlay: { min: 2000, max: 3000 },
       default: { min: 300, max: 500 }
     };
   }
