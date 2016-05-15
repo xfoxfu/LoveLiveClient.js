@@ -790,7 +790,7 @@ export namespace predefinedFunctions {
       }
     }))["X-Message-Code"]);
     export let withKey = (key: string): ICalculateHashFunction => (
-      async (data: string) => await crypto.hmac("sha1", key)(data, "utf8").toString("hex")
+      async (data: string) => (await crypto.hmac("sha1", key)(data, "utf8")).toString("hex")
     );
   };
   export namespace delay {
