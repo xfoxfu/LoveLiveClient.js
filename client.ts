@@ -994,7 +994,7 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       for (let unit of (await client.api.login.unitList()).unit_initial_set) {
         availableUnits.push(unit.unit_initial_set_id);
       }
-      if (!leader) leader = lib.randomInt(0, availableUnits.length - 1);
+      if (!leader) leader = availableUnits[lib.randomInt(0, availableUnits.length - 1)];;
       if (availableUnits.indexOf(leader) >= 0) {
         await client.api.login.unitSelect(leader);
       } else {
