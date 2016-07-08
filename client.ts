@@ -17,12 +17,14 @@ export namespace HTTPInterfaces {
   export interface ResponseBase<T> {
     response_data: T;
     status_code: number;
+    release_info: any;
   };
   export interface MultiResponseEachBase<T> {
     result: T;
     status: number;
     commandNum: string;
     timeStamp: string;
+    mgd: number;
   };
   export interface SimpleRequestBase {
   };
@@ -57,10 +59,13 @@ export namespace HTTPInterfaces {
       export interface startWithoutInvite extends Array<any> {
       };
       export interface unitList {
-        unit_initial_set: {
-          unit_initial_set_id: number;
-          unit_list: number[];
-          center_unit_id: number
+        member_category_list: {
+          member_category: number;
+          unit_initial_set: {
+            unit_initial_set_id: number;
+            unit_list: number[];
+            center_unit_id: number
+          }[];
         }[];
       };
       export interface unitSelect {
@@ -944,6 +949,7 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       await this.api.personalnotice.get();
       await this.tosCheckAndAgree();
       await this.api.platformAccount.isConnectedLlAccount();
+      await this.api.download.batch();
       await this.api.lbonus.execute();
       // TODO simulate webview
       await this.api.multi.getStartUpInformation();
@@ -989,16 +995,20 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       await client.api.user.changeName(name);
       await client.api.tutorial.progress(1);
       await client.api.multi.getStartUpInformation();
-      await client.api.multi.unitAllAndDeck();
       let availableUnits: number[] = [];
-      for (let unit of (await client.api.login.unitList()).unit_initial_set) {
-        availableUnits.push(unit.unit_initial_set_id);
+      {
+        let result = await client.api.login.unitList();
+        for (let category of result.member_category_list) {
+          for (let unit of category.unit_initial_set) {
+            availableUnits.push(unit.unit_initial_set_id);
+          }
+        }
       }
-      if (!leader) leader = availableUnits[lib.randomInt(0, availableUnits.length - 1)];;
+      if (!leader) leader = availableUnits[lib.randomInt(0, availableUnits.length - 1)];
       if (availableUnits.indexOf(leader) >= 0) {
         await client.api.login.unitSelect(leader);
       } else {
-        throw "Invaid leader id";
+        throw "Invalid leader id";
       }
       await client.api.tutorial.skip();
       {
@@ -1100,7 +1110,8 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
             module: module,
             action: action,
             timeStamp: utils.timestamp().toString(),
-            commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce}`
+            commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce}`,
+            mgd: 2
           }, data));
     };
     async callMultipleAPI<TMultiResult>(...requests: { module: string, action: string, data?: any }[]) {
@@ -1185,32 +1196,37 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
       multi: {
         getStartUpInformation: async () => this.callMultipleAPI( // TODO type annotation
           { module: "login", action: "topInfo" },
+          { module: "login", action: "topInfoOnce" },
           { module: "live", action: "liveStatus" },
           { module: "live", action: "schedule" },
           { module: "marathon", action: "marathonInfo" },
-          { module: "login", action: "topInfoOnce" },
+          { module: "battle", action: "battleInfo" },
+          { module: "festival", action: "festivalInfo" },
+          { module: "online", action: "info" },
+          { module: "challenge", action: "challengeInfo" },
           { module: "unit", action: "unitAll" },
           { module: "unit", action: "deckInfo" },
-          { module: "payment", action: "productList" },
+          { module: "unit", action: "supporterAll" },
+          { module: "unit", action: "removableSkillInfo" },
+          { module: "album", action: "albumAll" },
           { module: "scenario", action: "scenarioStatus" },
           { module: "subscenario", action: "subscenarioStatus" },
+          { module: "eventscenario", action: "status" },
           { module: "user", action: "showAllItem" },
-          { module: "battle", action: "battleInfo" },
+          { module: "payment", action: "productList" },
           { module: "banner", action: "bannerList" },
           { module: "notice", action: "noticeMarquee" },
-          { module: "festival", action: "festivalInfo" },
-          { module: "eventscenario", action: "status" },
+          { module: "user", action: "getNavi" },
           { module: "navigation", action: "specialCutin" },
-          { module: "album", action: "albumAll" },
           { module: "award", action: "awardInfo" },
           { module: "background", action: "backgroundInfo" },
-          { module: "online", action: "info" },
-          { module: "challenge", action: "challengeInfo" }),
+          { module: "exchange", action: "owningPoint" }),
         unitAllAndDeck: async () => await this.callMultipleAPI<[
           HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.unitAll>,
           HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.deckInfo>
         ]>({ module: "unit", action: "unitAll" },
-          { module: "unit", action: "deckInfo" })
+          { module: "unit", action: "deckInfo" },
+          { module: "unit", action: "supporterAll" })
       },
       unit: {
         merge: async (base: number, partners: number[]) => this.callAPIDetailed<
@@ -1293,6 +1309,13 @@ export let getClientClass = (headers: any, maxRetry?: number, server?: string,
             });
         }
       },
+      download: {
+        batch: async () => this.callAPIDetailed("download", "batch", {
+          os: "Android",
+          excluded_package_ids: [0, 1],
+          package_type: 4
+        })
+      }
     };
   };
   return Client;

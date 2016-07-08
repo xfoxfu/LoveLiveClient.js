@@ -18,5 +18,6 @@ const Client = llsifclient.getClientClass(config["client_config"]["headers"], 10
   console.log(res);
   let newClient = await Client.startFromTransferCode(res.code);
   console.log(newClient);
+  process.exit(0);
 })()
   .catch(console.log);
