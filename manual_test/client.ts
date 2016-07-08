@@ -5,10 +5,7 @@ const expect = chai.expect;
 const utils = require("utility");
 import llsifclient = require("../");
 let config = require("./config.json");
-const Client = llsifclient.getClientClass(config["client_config"]["headers"], 10,
-  `http://${config["client_config"]["headers"]["host"]}/main.php/`,
-  llsifclient.predefinedFunctions.calculateHash.LLMCG(config["client_config"]["llmcg_token"]),
-  llsifclient.predefinedFunctions.delay.custom(llsifclient.predefinedFunctions.delay.defaultTimes));
+const Client = llsifclient.Client;
 
 (async () => {
   let client = await Client.register();
