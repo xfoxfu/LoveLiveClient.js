@@ -41,6 +41,11 @@ export namespace HTTPInterfaces {
   };
   /* tslint:disable:class-name */
   export namespace Response {
+    /*
+     * for dates:
+     * All dates are formatted like 2016-07-06 06:51:04.
+     * TODO parse them
+     */
     export namespace login {
       export interface authkey {
         authorize_token: string;
@@ -110,13 +115,15 @@ export namespace HTTPInterfaces {
         social_point: number;
         unit_max: number;
         energy_max: number;
-        energy_max_time: string; // 2016-04-01 19:32:46
+        energy_full_time: string;
         energy_full_need_time: number;
         over_max_energy: number;
         friend_max: number;
         invite_code: string;
-        insert_date: string; // 2016-04-01 19:32:46
-        update_date: string; // 2016-04-01 19:32:46
+        unlock_random_live_muse: number;
+        unlock_random_live_aqours: number;
+        insert_date: string;
+        update_date: string;
         tutorial_state: number;
       };
       export interface changeName {
@@ -151,12 +158,16 @@ export namespace HTTPInterfaces {
         love: number;
         max_love: number;
         unit_skill_level: number;
+        unit_skill_exp: number;
         max_hp: number;
-        is_rank_max: boolean;
+        unit_removable_skill_capacity: number;
         favorite_flag: boolean;
+        display_rank: number;
+        is_rank_max: boolean;
         is_love_max: boolean;
         is_level_max: boolean;
         is_skill_level_max: boolean;
+        is_removable_skill_capacity_max: boolean;
         insert_date: string;
       }> { };
       export interface deckInfo extends Array<{
@@ -168,6 +179,7 @@ export namespace HTTPInterfaces {
           unit_owning_user_id: number;
         }[]
       }> { };
+      export interface supporterAll extends Array<any> { }; // TODO
       export interface merge {
         before: {
           unit_owning_user_id: number;
@@ -298,7 +310,7 @@ export namespace HTTPInterfaces {
       };
     };
     export namespace lbonus {
-      export interface login {
+      export interface execute {
         login_count: number;
         days_from_first_login: number;
         before_lbonus_point: number;
@@ -350,7 +362,7 @@ export namespace HTTPInterfaces {
           count: number;
           is_accomplished: boolean;
           insert_date: string;
-          end_date: any; // TODO
+          end_date: string;
           remaining_time: string;
           is_new: boolean;
           for_display: boolean;
@@ -874,6 +886,11 @@ export class Client {
     token: "",
     id: 0
   };
+  private static GameModes = {
+    muse: 1,
+    aqours: 2
+  };
+  private gameMode = Client.GameModes.aqours;
   private nonce = 2;
   /**
    * client operations
@@ -881,6 +898,22 @@ export class Client {
   constructor(key: string, passwd: string) {
     this.user.loginKey = key;
     this.user.loginPasswd = passwd;
+  };
+  setGameMode = (mode: "muse" | "aqours") => {
+    switch (mode) {
+      case "muse": {
+        this.gameMode = Client.GameModes.muse;
+        break;
+      }
+      case "aqours": {
+        this.gameMode = Client.GameModes.aqours;
+        break;
+      }
+      default: {
+        this.gameMode = Client.GameModes.aqours;
+        break;
+      }
+    }
   };
   startGame = async () => {
     await this.initialize();
@@ -916,14 +949,12 @@ export class Client {
   private static generateCreditalPair = async () => {
     return [uuid.v4(), (await crypto.hash("sha512")([uuid.v4(), Date.now()].toString())).toString("hex")];
   };
-  // When Node.js adapts to v8 shipped with Chrome 49, use this line instead of the following 3 lines.
-  // static async register(name = "Node-LLSIFClient", leader = 1): Promise<Client> {
   static register = async (name?: string, leader?: number) => {
     const defaultNames = `幻の学院生 明るい学院生 期待の学院生 純粋な学院生 素直な学院生 元気な学院生 天然な学院生 勇敢な学院生 気になる学院生 真面目な学院生 不思議な学院生 癒し系な学院生 心優しい学院生 さわやかな学院生 頼りになる学院生 さすらいの学院生 正義感あふれる学院生 カラオケ好きの学院生`.split(" ");
     if (!name) name = defaultNames[lib.randomInt(0, defaultNames.length - 1)];
     // When v8 supports destructing, use the feature
-    let accountCredits = await Client.generateCreditalPair();
-    let client = new Client(accountCredits[0], accountCredits[1]);
+    let [key, pass] = await Client.generateCreditalPair();
+    let client = new Client(key, pass);
     client.resetNonce();
     client.user.token = await client.api.login.authkey();
     await client.api.login.startUp();
@@ -934,24 +965,34 @@ export class Client {
     await client.api.user.changeName(name);
     await client.api.tutorial.progress(1);
     await client.api.multi.getStartUpInformation();
-    let availableUnits: number[] = [];
+    let allAvailableUnits: number[] = [];
+    let museAvailableUnits: number[] = [];
+    let aqoursAvailableUnits: number[] = [];
     {
       let result = await client.api.login.unitList();
       for (let category of result.member_category_list) {
         for (let unit of category.unit_initial_set) {
-          availableUnits.push(unit.unit_initial_set_id);
+          if (category.member_category === 1) {
+            museAvailableUnits.push(unit.unit_initial_set_id);
+          } else if (category.member_category === 2) {
+            aqoursAvailableUnits.push(unit.unit_initial_set_id);
+          }
+          allAvailableUnits.push(unit.unit_initial_set_id);
         }
       }
     }
-    if (!leader) leader = availableUnits[lib.randomInt(0, availableUnits.length - 1)];
-    if (availableUnits.indexOf(leader) >= 0) {
+    if (!leader) leader = allAvailableUnits[lib.randomInt(0, museAvailableUnits.length - 1)];
+    if (allAvailableUnits.indexOf(leader) >= 0) {
+      if (museAvailableUnits.indexOf(leader) >= 0) {
+        client.setGameMode("muse");
+      }
       await client.api.login.unitSelect(leader);
     } else {
       throw "Invalid leader id";
     }
     await client.api.tutorial.skip();
     {
-      let result = await client.api.multi.unitAllAndDeck();
+      let result = await client.api.multi.getDeckAndUnits();
       let base = result[0]["result"][0]["unit_owning_user_id"];
       let mergePartner = result[0]["result"][10]["unit_owning_user_id"];
       await client.api.unit.merge(base, [mergePartner]);
@@ -963,10 +1004,8 @@ export class Client {
     return client;
   };
   static startFromTransferCode = async (code: string) => {
-    // When v8 supports, use better code
-    // When v8 supports destructing, use the feature
-    let accountCredits = await Client.generateCreditalPair();
-    let client = new Client(accountCredits[0], accountCredits[1]);
+    let [key, pass] = await Client.generateCreditalPair();
+    let client = new Client(key, pass);
     client.resetNonce();
     client.user.token = await client.api.login.authkey();
     await client.api.login.startUp();
@@ -1050,16 +1089,7 @@ export class Client {
           action: action,
           timeStamp: utils.timestamp().toString(),
           commandNum: `${uuid.v4()}.${utils.timestamp()}.${this.nonce}`,
-          mgd: 2
-          /**
-           * This means GameMode, and
-           * muse = 1,
-           * aqours = 2.
-           * TODO support GameMode switch
-           * As this affects live, scout and many actions,
-           * not implementing this may expose different
-           * identities.
-           */
+          mgd: this.gameMode
         }, data));
     /**
      * TODO
@@ -1175,7 +1205,7 @@ export class Client {
         { module: "award", action: "awardInfo" },
         { module: "background", action: "backgroundInfo" },
         { module: "exchange", action: "owningPoint" }),
-      unitAllAndDeck: async () => await this.callMultipleAPI<[
+      getDeckAndUnits: async () => await this.callMultipleAPI<[
         HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.unitAll>,
         HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.deckInfo>
       ]>({ module: "unit", action: "unitAll" },
@@ -1195,7 +1225,7 @@ export class Client {
         })
     },
     lbonus: {
-      execute: async () => this.callAPIDetailed<HTTPInterfaces.Response.lbonus.login>("lbonus", "execute")
+      execute: async () => this.callAPIDetailed<HTTPInterfaces.Response.lbonus.execute>("lbonus", "execute")
     },
     personalnotice: {
       get: async () => this.callAPIDetailed<
