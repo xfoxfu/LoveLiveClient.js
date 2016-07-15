@@ -558,13 +558,13 @@ export class Client {
         HTTPInterfaces.Response.secretbox.pon,
         HTTPInterfaces.RequestData.secretbox.pon>("secretbox", "pon", {
           secret_box_id: boxId,
-          cost_priority: costPriority
+          cost_priority: costPriority // in secretbox/all cost.priority
         }),
       multi: async (boxId: number, costPriority: number, count: number) => this.callAPIDetailed<
         HTTPInterfaces.Response.secretbox.multi,
         HTTPInterfaces.RequestData.secretbox.multi>("secretbox", "multi", {
           secret_box_id: boxId,
-          cost_priority: costPriority,
+          cost_priority: costPriority, // in secretbox/all cost.priority
           cost: count
         })
     }
