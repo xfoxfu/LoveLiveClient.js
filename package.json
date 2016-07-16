@@ -1,6 +1,7 @@
 {
   "name": "llsifclient",
-  "version": "0.2.0-beta3",
+  "version": "0.3.0-beta",
+  "private": true,
   "scripts": {
     "test": "make test",
     "postinstall": "make install&& make compile",
@@ -19,7 +20,7 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/coderfox/Node-LLSIF.git"
+    "url": "https://github.com/coderfox/LoveLiveClient.js.git"
   },
   "keywords": [
     "love live",
@@ -28,9 +29,9 @@
   "author": "coderfox <coderfox.fu@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/coderfox/Node-LLSIF/issues"
+    "url": "https://github.com/coderfox/LoveLiveClient.js/issues"
   },
-  "homepage": "https://github.com/coderfox/Node-LLSIF",
+  "homepage": "https://github.com/coderfox/LoveLiveClient.js",
   "devDependencies": {
     "chai": "^3.5.0",
     "mocha": "^2.4.5",
