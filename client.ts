@@ -461,7 +461,30 @@ export class Client {
         HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.unit.deckInfo>
       ]>({ module: "unit", action: "unitAll" },
         { module: "unit", action: "deckInfo" },
-        { module: "unit", action: "supporterAll" })
+        { module: "unit", action: "supporterAll" }),
+      rewardList: async () => this.callMultipleAPI<[
+        HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.reward.rewardList>,
+        HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.reward.rewardList>,
+        HTTPInterfaces.MultiResponseEachBase<HTTPInterfaces.Response.reward.rewardList>
+      ]>({
+        module: "reward", action: "rewardList", data: {
+          "order": 0,
+          "filter": [0],
+          "category": 0
+        }
+      }, {
+          module: "reward", action: "rewardList", data: {
+            "order": 0,
+            "filter": [0, 0],
+            "category": 1
+          }
+        }, {
+          module: "reward", action: "rewardList", data: {
+            "order": 0,
+            "filter": [0],
+            "category": 2
+          }
+        })
     },
     unit: {
       merge: async (base: number, partners: number[]) => this.callAPIDetailed<
@@ -566,6 +589,20 @@ export class Client {
           secret_box_id: boxId,
           cost_priority: costPriority, // in secretbox/all cost.priority
           cost: count
+        })
+    },
+    reward: {
+      open: async (incentiveId: number) => this.callAPIDetailed<
+        HTTPInterfaces.Response.reward.open,
+        HTTPInterfaces.RequestData.reward.open>("reward", "open", {
+          incentive_id: incentiveId
+        }),
+      openAll: async (order: number, filter: number[], category: number) => this.callAPIDetailed<
+        HTTPInterfaces.Response.reward.openAll,
+        HTTPInterfaces.RequestData.reward.openAll>("reward", "open", {
+          order: order,
+          filter: filter,
+          category: category
         })
     }
   };

@@ -1032,6 +1032,77 @@ export namespace Response {
       next_free_aqours_gacha_timestamp: number;
     };
   };
+  export namespace reward {
+    export interface rewardList {
+      item_count: number;
+      limit: number;
+      order: number;
+      items: {
+        incentive_id: number;
+        incentive_item_id: number;
+        add_type: number;
+        amount: number;
+        rank_max_flag: boolean;
+        item_category_id: number;
+        incentive_type: number;
+        incentive_message: string;
+        insert_date: string;
+        remaining_time: string;
+        item_option?: any;
+        level?: number;
+      }[];
+    };
+    export interface open {
+      opened_num: number;
+      success: {
+        incentive_id: number;
+        item_id: number;
+        add_type: number;
+        amount: number;
+        item_category_id: number;
+        reward_box_flag: boolean;
+      }[];
+      fail: any[]; // TODO
+      bushimo_reward_info: any[]; // TODO
+    };
+    export interface openAll {
+      reward_num: number;
+      opened_num: number;
+      total_num: number;
+      order: number;
+      upper_limit: boolean;
+      reward_item_list: {
+        incentive_id: number;
+        item_id: number;
+        add_type: number;
+        amount: number;
+        item_category_id: number;
+        reward_box_flag: boolean;
+        unit_id?: number;
+        unit_owning_user_id?: number;
+        is_support_member?: boolean;
+        exp?: number;
+        next_exp?: number;
+        max_hp?: number;
+        level?: number;
+        skill_level?: number;
+        rank?: number;
+        love?: number;
+        is_rank_max?: boolean;
+        is_level_max?: boolean;
+        is_love_max?: boolean;
+        new_unit_flag?: boolean;
+        unit_skill_exp?: number;
+        display_rank?: number;
+        unit_removable_skill_capacity?: number;
+      }[];
+      bushimo_reward_info: any[]; // TODO
+      unit_support_list: {
+        unit_id: number;
+        amount: number;
+      }[];
+    };
+  };
 };
 export namespace RequestData {
   export namespace login {
@@ -1081,6 +1152,21 @@ export namespace RequestData {
       secret_box_id: number;
       cost_priority: number;
       cost: number; // for 11-gems, this is 11.
+    };
+  };
+  export namespace reward {
+    export interface rewardList {
+      order: number;
+      filter: number[]; // TODO
+      category: number;
+    };
+    export interface open {
+      incentive_id:number;
+    };
+    export interface openAll {
+      order: number;
+      filter: number[]; // TODO
+      category: number;
     };
   };
 };
