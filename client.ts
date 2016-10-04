@@ -103,7 +103,7 @@ let config = {
     "Accept-Encoding": "gzip,deflate",
     "API-Model": "straightforward",
     "Debug": "1",
-    "Bundle-Version": "4.0.2",
+    "Bundle-Version": "4.0.4",
     "Client-Version": process.env.LL_CLIENT_VERSION || "18.5",
     "OS-Version": process.env.LL_DEVICE || "Nexus 6 google shamu 5.0",
     "OS": "Android",
