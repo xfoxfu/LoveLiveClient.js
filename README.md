@@ -3,6 +3,9 @@ Node-LLSIFClient
 
 *Love Live! School Idol Festival* client in Node.js.
 
+**THIS PROJECT IS DEPRECATED AS I AM GOING TO REWRITE IT IN C#**
+**CURRENT LATEST LOVELIVE IS NOT SUPPORTED AND YOU HAVE TO USE AT YOUR OWN RISK!**
+
 System Requirements
 -----
 
